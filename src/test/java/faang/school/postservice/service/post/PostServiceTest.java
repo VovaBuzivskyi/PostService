@@ -62,6 +62,8 @@ public class PostServiceTest {
     @Captor
     private ArgumentCaptor<Post> captor;
 
+    private static final int UNVERIFIED_POSTS_BAN_COUNT = 5;
+
     @Test
     public void createPostTest() {
         PostRequestDto postRequestDto = new PostRequestDto();
@@ -429,43 +431,45 @@ public class PostServiceTest {
 
     @Test
     public void getPostsWhereVerifiedFalseSuccessTest() throws JsonProcessingException {
-        int banCount = 5;
-        ReflectionTestUtils.setField(postService, "banCount", banCount);
-
-        when(postRepository.findAuthorsIdsToBan(banCount)).thenReturn(List.of(1L));
+        preparePostServiceMock();
+        when(postRepository.findAuthorsIdsToBan(UNVERIFIED_POSTS_BAN_COUNT)).thenReturn(List.of(1L));
 
         postService.getPostsWhereVerifiedFalse();
 
-        verify(postRepository).findAuthorsIdsToBan(banCount);
+        verify(postRepository).findAuthorsIdsToBan(UNVERIFIED_POSTS_BAN_COUNT);
         verify(redisMessagePublisher).publish(objectMapper.writeValueAsString(1L));
     }
 
     @Test
     void testGetPostsWhereVerifiedFalseNoIdsTest() {
-        int banCount = 5;
-        ReflectionTestUtils.setField(postService, "banCount", banCount);
+        preparePostServiceMock();
 
-        when(postRepository.findAuthorsIdsToBan(banCount)).thenReturn(Collections.emptyList());
+        when(postRepository.findAuthorsIdsToBan(UNVERIFIED_POSTS_BAN_COUNT)).thenReturn(Collections.emptyList());
         postService.getPostsWhereVerifiedFalse();
 
-        verify(postRepository, times(1)).findAuthorsIdsToBan(banCount);
+        verify(postRepository, times(1)).findAuthorsIdsToBan(UNVERIFIED_POSTS_BAN_COUNT);
         verifyNoInteractions(redisMessagePublisher);
     }
 
     @Test
     void testGetPostsWhereVerifiedFalseExceptionTest() throws JsonProcessingException {
-        int banCount = 5;
+        preparePostServiceMock();
         List<Long> authorIds = List.of(1L);
-        ReflectionTestUtils.setField(postService, "banCount", banCount);
 
-        when(postRepository.findAuthorsIdsToBan(banCount)).thenReturn(authorIds);
+        when(postRepository.findAuthorsIdsToBan(UNVERIFIED_POSTS_BAN_COUNT)).thenReturn(authorIds);
         when(objectMapper.writeValueAsString(1L)).thenThrow(new JsonProcessingException("Serialization failed") {});
 
         assertThrows(RuntimeException.class, () -> postService.getPostsWhereVerifiedFalse());
 
-        verify(postRepository, times(1)).findAuthorsIdsToBan(banCount);
+        verify(postRepository, times(1)).findAuthorsIdsToBan(UNVERIFIED_POSTS_BAN_COUNT);
         verify(objectMapper, times(1)).writeValueAsString(1L);
         verifyNoInteractions(redisMessagePublisher);
     }
+
+    private void preparePostServiceMock() {
+        ReflectionTestUtils.setField(postService, "unverifiedPostsBanCount", UNVERIFIED_POSTS_BAN_COUNT);
+    }
+
+
 
 }

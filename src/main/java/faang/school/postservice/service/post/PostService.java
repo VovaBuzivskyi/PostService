@@ -34,8 +34,8 @@ public class PostService {
     private final RedisMessagePublisher redisMessagePublisher;
     private final ObjectMapper objectMapper;
 
-    @Value("${post.ban-count}")
-    private Integer banCount;
+    @Value("${post.unverified-posts-ban-count}")
+    private Integer unverifiedPostsBanCount;
 
     public PostDto createPost(PostRequestDto postRequestDtoDto) {
         postValidator.checkCreator(postRequestDtoDto);
@@ -150,7 +150,7 @@ public class PostService {
 
     public void getPostsWhereVerifiedFalse() {
         try {
-            List<Long> authorIds = postRepository.findAuthorsIdsToBan(banCount);
+            List<Long> authorIds = postRepository.findAuthorsIdsToBan(unverifiedPostsBanCount);
 
             if (authorIds.isEmpty()) {
                 log.info("No authors to ban");
