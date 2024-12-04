@@ -30,5 +30,6 @@ public class CommentDto {
     private LocalDateTime updatedAt;
     private List<Long> likesId;
 
+    @NotNull(message = "verify status can't be empty")
     private Boolean verified;
 }

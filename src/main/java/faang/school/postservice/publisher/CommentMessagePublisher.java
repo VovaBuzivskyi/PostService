@@ -8,9 +8,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class CommentMessagePublisher {
+public class CommentMessagePublisher implements MessagePublisher<CommentEventDto> {
 
-    @Value("${event-topic.comment}")
+    @Value("${spring.data.redis.channels.comment}")
     private String commentEventTopic;
 
     private final RedisTemplate<String, Object> redisTemplate;
