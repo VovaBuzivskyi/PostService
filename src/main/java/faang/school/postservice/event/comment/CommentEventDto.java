@@ -1,14 +1,16 @@
-package faang.school.postservice.dto.comment;
+package faang.school.postservice.event.comment;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 
 @Setter
 @Getter
 @Builder
+@EqualsAndHashCode
 @AllArgsConstructor
 public class CommentEventDto {
 
