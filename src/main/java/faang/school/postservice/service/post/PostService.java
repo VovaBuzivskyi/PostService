@@ -1,26 +1,25 @@
 package faang.school.postservice.service.post;
 
-import faang.school.postservice.client.UserServiceClient;
-import faang.school.postservice.config.context.UserContext;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
-import faang.school.postservice.dto.user.UserDto;
 import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.exception.PostException;
 import faang.school.postservice.mapper.post.PostMapper;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
-import faang.school.postservice.repository.PostRepository;
 import faang.school.postservice.redis.RedisMessagePublisher;
+import faang.school.postservice.repository.PostRepository;
 import faang.school.postservice.validator.post.PostValidator;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -28,16 +27,15 @@ import java.util.stream.Collectors;
 public class PostService {
 
     private static final String POST = "Post";
-    private static final Integer defaultValue = 0;
-    private static final Integer addValue = 1;
-    private static final Integer banCount = 5;
 
     private final PostMapper postMapper;
     private final PostRepository postRepository;
     private final PostValidator postValidator;
     private final RedisMessagePublisher redisMessagePublisher;
-    private final UserServiceClient userServiceClient;
-    private final UserContext userContext;
+    private final ObjectMapper objectMapper;
+
+    @Value("${post.ban-count}")
+    private Integer banCount;
 
     public PostDto createPost(PostRequestDto postRequestDtoDto) {
         postValidator.checkCreator(postRequestDtoDto);
@@ -151,38 +149,21 @@ public class PostService {
     }
 
     public void getPostsWhereVerifiedFalse() {
-        postRepository.findAllByVerifiedFalse()
-                .stream()
-                .collect(Collectors.groupingBy(Post::getAuthorId, Collectors.summingInt(post -> addValue)))
-                .forEach(this::processAuthor);
-    }
-
-    private void processAuthor(Long userId, Integer postCount) {
-        log.info("Processing user with id: {} and post count: {}", userId, postCount);
-
-        if (postCount > banCount) {
-            handleUserBan(userId);
-        }
-    }
-
-    private void handleUserBan(Long userId) {
         try {
-            userContext.setUserId(defaultValue);
-            UserDto userDto = userServiceClient.getUser(userId);
+            List<Long> authorIds = postRepository.findAuthorsIdsToBan(banCount);
 
-            if (userDto == null) {
-                log.error("User with id: {} not found.", userId);
+            if (authorIds.isEmpty()) {
+                log.info("No authors to ban");
                 return;
             }
 
-            if (userDto.isBanned()) {
-                log.info("User with id: {} is already banned. Skipping...", userId);
-                return;
+            for (Long authorId : authorIds) {
+                String message = objectMapper.writeValueAsString(authorId);
+                log.info("Message sent to Redis with authorId : {}", authorId);
+                redisMessagePublisher.publish(message);
             }
-            redisMessagePublisher.publish(userId.toString());
-            log.info("Message sent to Redis for user with id: {}", userId);
-        } finally {
-            userContext.clear();
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize author ID to JSON", e);
         }
     }
 

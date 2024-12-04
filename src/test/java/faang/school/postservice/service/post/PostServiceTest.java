@@ -1,18 +1,16 @@
 package faang.school.postservice.service.post;
 
-import faang.school.postservice.client.UserServiceClient;
-import faang.school.postservice.config.context.UserContext;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
-import faang.school.postservice.dto.user.UserDto;
 import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.exception.PostException;
 import faang.school.postservice.mapper.post.PostMapper;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
-import faang.school.postservice.repository.PostRepository;
 import faang.school.postservice.redis.RedisMessagePublisher;
-import faang.school.postservice.validator.post.PostValidator;
+import faang.school.postservice.repository.PostRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
@@ -22,6 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -48,16 +47,10 @@ public class PostServiceTest {
     private PostRepository postRepository;
 
     @Mock
-    private PostValidator postValidator;
-
-    @Mock
     private RedisMessagePublisher redisMessagePublisher;
 
     @Mock
-    private UserServiceClient userServiceClient;
-
-    @Mock
-    private UserContext userContext;
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private PostService postService;
@@ -431,53 +424,43 @@ public class PostServiceTest {
     }
 
     @Test
-    public void getPostsWhereVerifiedFalseSuccessTest() {
-        Post post1 = new Post();
-        post1.setVerified(false);
-        post1.setAuthorId(1L);
+    public void getPostsWhereVerifiedFalseSuccessTest() throws JsonProcessingException {
+        int banCount = 5;
+        ReflectionTestUtils.setField(postService, "banCount", banCount);
 
-        Post post2 = new Post();
-        post2.setVerified(false);
-        post2.setAuthorId(1L);
-
-        Post post3 = new Post();
-        post3.setVerified(false);
-        post3.setAuthorId(1L);
-
-        Post post4 = new Post();
-        post4.setVerified(false);
-        post4.setAuthorId(1L);
-
-        Post post5 = new Post();
-        post5.setVerified(false);
-        post5.setAuthorId(1L);
-
-        Post post6 = new Post();
-        post6.setVerified(false);
-        post6.setAuthorId(1L);
-
-        UserDto userDto = new UserDto();
-        userDto.setId(1L);
-        userDto.setBanned(false);
-
-        List<Post> posts = List.of(post1, post2, post3, post4, post5, post6);
-        when(postRepository.findAllByVerifiedFalse()).thenReturn(posts);
-        when(userServiceClient.getUser(1L)).thenReturn(userDto);
+        when(postRepository.findAuthorsIdsToBan(banCount)).thenReturn(List.of(1L));
 
         postService.getPostsWhereVerifiedFalse();
 
-        verify(postRepository, times(1)).findAllByVerifiedFalse();
-        verify(userServiceClient, times(1)).getUser(1L);
-        verify(redisMessagePublisher).publish("1");
-        verify(userContext, times(1)).clear();
+        verify(postRepository).findAuthorsIdsToBan(banCount);
+        verify(redisMessagePublisher).publish(objectMapper.writeValueAsString(1L));
     }
 
     @Test
-    void testGetPostsWhereVerifiedFalseNoPostsTest() {
-        when(postRepository.findAllByVerifiedFalse()).thenReturn(Collections.emptyList());
+    void testGetPostsWhereVerifiedFalseNoIdsTest() {
+        int banCount = 5;
+        ReflectionTestUtils.setField(postService, "banCount", banCount);
+
+        when(postRepository.findAuthorsIdsToBan(banCount)).thenReturn(Collections.emptyList());
         postService.getPostsWhereVerifiedFalse();
-        verify(postRepository, times(1)).findAllByVerifiedFalse();
-        verifyNoInteractions(userServiceClient);
+
+        verify(postRepository, times(1)).findAuthorsIdsToBan(banCount);
+        verifyNoInteractions(redisMessagePublisher);
+    }
+
+    @Test
+    void testGetPostsWhereVerifiedFalseExceptionTest() throws JsonProcessingException {
+        int banCount = 5;
+        List<Long> authorIds = List.of(1L);
+        ReflectionTestUtils.setField(postService, "banCount", banCount);
+
+        when(postRepository.findAuthorsIdsToBan(banCount)).thenReturn(authorIds);
+        when(objectMapper.writeValueAsString(1L)).thenThrow(new JsonProcessingException("Serialization failed") {});
+
+        assertThrows(RuntimeException.class, () -> postService.getPostsWhereVerifiedFalse());
+
+        verify(postRepository, times(1)).findAuthorsIdsToBan(banCount);
+        verify(objectMapper, times(1)).writeValueAsString(1L);
         verifyNoInteractions(redisMessagePublisher);
     }
 

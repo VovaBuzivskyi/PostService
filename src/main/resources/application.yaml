@@ -35,7 +35,7 @@ server:
 
 cron:
   check-comments: "0 0 0 * * ?"
-  unverified-posts: 0 0 1 * * ?
+  unverified-posts: 0 47 16 * * ?
 
 logging:
   level:
@@ -52,6 +52,12 @@ project-service:
 payment-service:
   host: localhost
   port: 9080
+
+post:
+  ban-count: 5
+
+
+
 
 
 
