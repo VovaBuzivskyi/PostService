@@ -44,10 +44,17 @@ public class CommentService {
         return commentMapper.toDto(currentComment);
     }
 
-    public List<CommentDto> getAllComments(Long postId) {
+    public List<CommentDto> getAllCommentsByPostId(Long postId) {
         postService.getPostById(postId);
         return commentRepository.findAllByPostId(postId).stream()
                 .sorted(Comparator.comparing(Comment::getCreatedAt).reversed())
+                .map(commentMapper::toDto)
+                .toList();
+    }
+
+    public List<CommentDto> getAllCommentsNoVerified() {
+        return commentRepository.findAll().stream()
+                .filter(comment -> !comment.getVerified())
                 .map(commentMapper::toDto)
                 .toList();
     }

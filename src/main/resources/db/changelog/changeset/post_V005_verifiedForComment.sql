@@ -1,0 +1,2 @@
+ALTER TABLE comment
+    ADD verified BOOLEAN NOT NULL DEFAULT TRUE

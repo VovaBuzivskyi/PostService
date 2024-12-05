@@ -29,4 +29,6 @@ public class CommentDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<Long> likesId;
+
+    private Boolean verified;
 }

@@ -2,7 +2,6 @@ spring:
   mvc:
     servlet:
       path: /api/v1
-
   datasource:
     driver-class-name: org.postgresql.Driver
     url: jdbc:postgresql://localhost:5432/postgres
@@ -28,8 +27,15 @@ spring:
       channels:
         calculations_channel:
           name: calculations_channel
+        user_ban_channel:
+          name: user_ban
+
 server:
   port: 8081
+
+cron:
+  check-comments: "0 0 0 * * ?"
+  unverified-posts: 0 47 16 * * ?
 
 logging:
   level:
@@ -47,7 +53,18 @@ payment-service:
   host: localhost
   port: 9080
 
-publish-posts:
-  batch-size: 1000
-  scheduling:
-    cron: "0 * * * * *"
+post:
+  unverified-posts-ban-count: 5
+  publish-posts:
+    batch-size: 1000
+    scheduling:
+      cron: "0 * * * * *"
+
+
+
+
+
+
+
+
+

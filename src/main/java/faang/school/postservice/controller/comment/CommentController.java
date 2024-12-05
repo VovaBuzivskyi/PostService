@@ -34,7 +34,7 @@ public class CommentController {
 
     @GetMapping("/{postId}")
     public ResponseEntity<List<CommentDto>> getAllComments(@PathVariable Long postId) {
-        return ResponseEntity.ok(commentService.getAllComments(postId));
+        return ResponseEntity.ok(commentService.getAllCommentsByPostId(postId));
     }
 
     @DeleteMapping("/{authorId}")

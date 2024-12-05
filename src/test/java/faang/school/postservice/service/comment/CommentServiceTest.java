@@ -130,7 +130,7 @@ public class CommentServiceTest {
         when(commentMapper.toDto(comment1)).thenReturn(commentDto1);
         when(commentMapper.toDto(comment2)).thenReturn(commentDto2);
 
-        List<CommentDto> result = commentService.getAllComments(postId);
+        List<CommentDto> result = commentService.getAllCommentsByPostId(postId);
 
         assertEquals(expectedDtos, result);
 
@@ -208,5 +208,24 @@ public class CommentServiceTest {
 
         verify(commentRepository).save(comment);
         assertFalse(comment.getLikes().contains(like));
+    }
+
+    @Test
+    public void getAllCommentsNoVerifiedTest() {
+        Comment commentFirst = new Comment();
+        commentFirst.setAuthorId(1L);
+        commentFirst.setVerified(true);
+        Comment commentSecond = new Comment();
+        commentSecond.setAuthorId(1L);
+        commentSecond.setVerified(false);
+        Comment commentThird = new Comment();
+        commentThird.setAuthorId(1L);
+        commentThird.setVerified(false);
+        List<Comment> comments = List.of(commentFirst, commentSecond, commentThird);
+        when(commentRepository.findAll()).thenReturn(comments);
+
+        List<CommentDto> commentDtos = commentService.getAllCommentsNoVerified();
+
+        assertEquals(2, commentDtos.size());
     }
 }

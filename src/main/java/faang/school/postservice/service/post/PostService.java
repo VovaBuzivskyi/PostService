@@ -1,5 +1,7 @@
 package faang.school.postservice.service.post;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import faang.school.postservice.config.thread_pool.ThreadPoolConfig;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
@@ -8,8 +10,10 @@ import faang.school.postservice.exception.PostException;
 import faang.school.postservice.mapper.post.PostMapper;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
+import faang.school.postservice.redis.RedisMessagePublisher;
 import faang.school.postservice.repository.PostRepository;
 import faang.school.postservice.validator.post.PostValidator;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,15 +32,20 @@ import java.util.concurrent.Executor;
 @RequiredArgsConstructor
 public class PostService {
 
-    @Value("${publish-posts.batch-size}")
-    private int batchSize;
-
     private static final String POST = "Post";
 
     private final PostMapper postMapper;
     private final PostRepository postRepository;
     private final PostValidator postValidator;
+    private final RedisMessagePublisher redisMessagePublisher;
+    private final ObjectMapper objectMapper;
     private final ThreadPoolConfig threadPoolConfig;
+
+    @Value("${post.unverified-posts-ban-count}")
+    private Integer unverifiedPostsBanCount;
+
+    @Value("${publish-posts.batch-size}")
+    private int batchSize;
 
     public PostDto createPost(PostRequestDto postRequestDtoDto) {
         postValidator.checkCreator(postRequestDtoDto);
@@ -138,12 +147,32 @@ public class PostService {
         postRepository.save(post);
     }
 
+    @Transactional
     public Post getPost(Long postId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new EntityNotFoundException(POST, postId));
 
         log.info("Get post with id {}", postId);
         return post;
+    }
+
+    public void getPostsWhereVerifiedFalse() {
+        try {
+            List<Long> authorIds = postRepository.findAuthorsIdsToBan(unverifiedPostsBanCount);
+
+            if (authorIds.isEmpty()) {
+                log.info("No authors to ban");
+                return;
+            }
+
+            for (Long authorId : authorIds) {
+                String message = objectMapper.writeValueAsString(authorId);
+                log.info("Message sent to Redis with authorId : {}", authorId);
+                redisMessagePublisher.publish(message);
+            }
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize author ID to JSON", e);
+        }
     }
 
     @Async("threadPoolExecutorForPublishingPosts")
