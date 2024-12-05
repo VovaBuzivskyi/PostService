@@ -39,6 +39,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -452,7 +453,7 @@ public class PostServiceTest {
     }
 
     @Test
-    void testGetPostsWhereVerifiedFalseNoIdsTest() {
+    void getPostsWhereVerifiedFalseNoIdsTest() {
         preparePostServiceMock();
 
         when(postRepository.findAuthorsIdsToBan(UNVERIFIED_POSTS_BAN_COUNT)).thenReturn(Collections.emptyList());
@@ -463,7 +464,7 @@ public class PostServiceTest {
     }
 
     @Test
-    void testGetPostsWhereVerifiedFalseExceptionTest() throws JsonProcessingException {
+    void getPostsWhereVerifiedFalseExceptionTest() throws JsonProcessingException {
         preparePostServiceMock();
         List<Long> authorIds = List.of(1L);
 

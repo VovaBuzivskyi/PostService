@@ -13,7 +13,6 @@ import faang.school.postservice.model.Post;
 import faang.school.postservice.redis.RedisMessagePublisher;
 import faang.school.postservice.repository.PostRepository;
 import faang.school.postservice.validator.post.PostValidator;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,7 +43,7 @@ public class PostService {
     @Value("${post.unverified-posts-ban-count}")
     private Integer unverifiedPostsBanCount;
 
-    @Value("${publish-posts.batch-size}")
+    @Value("${post.publish-posts.batch-size}")
     private int batchSize;
 
     public PostDto createPost(PostRequestDto postRequestDtoDto) {
@@ -147,7 +146,6 @@ public class PostService {
         postRepository.save(post);
     }
 
-    @Transactional
     public Post getPost(Long postId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new EntityNotFoundException(POST, postId));
