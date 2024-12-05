@@ -9,3 +9,7 @@ databaseChangeLog:
       file: db/changelog/changeset/post_V004_visibilityForAlbum.sql
   - include:
       file: db/changelog/changeset/post_V005_verifiedForComment.sql
+  - include:
+      file: db/changelog/changeset/post_V006_postVerified.sql
+  - include:
+      file: db/changelog/changeset/post_V007_create_posts.sql
