@@ -24,9 +24,9 @@ spring:
     redis:
       port: 6379
       host: localhost
-      channels:
+      channel:
         user-ban: user_ban
-        comment: comment_topic
+        comment: comment_channel
         calculations_channel:
           name: calculations_channel
 
