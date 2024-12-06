@@ -62,20 +62,21 @@ public class CommentServiceTest {
         CommentDto commentDto = CommentDto.builder()
                 .id(15L)
                 .authorId(1L)
-                .content("Test")
+                .content("commentContent")
                 .postId(1L)
                 .build();
 
         Post post = Post.builder()
                 .id(10L)
+                .content("postContent")
                 .authorId(100L)
                 .build();
 
         CommentEventDto resultCommentEventDto = CommentEventDto.builder()
                 .postCreatorId(100L)
                 .commenterId(1L)
-                .postId(10L)
-                .commentId(15L)
+                .postContent("postContent")
+                .commentContent("commentContent")
                 .build();
 
         Comment savedComment = Comment.builder()

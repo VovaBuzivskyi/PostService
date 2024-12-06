@@ -44,8 +44,8 @@ public class CommentService {
         CommentEventDto commentEventDto = CommentEventDto.builder()
                 .postCreatorId(result.getPost().getAuthorId())
                 .commenterId(result.getAuthorId())
-                .postId(result.getPost().getId())
-                .commentId(result.getId())
+                .postContent(result.getPost().getContent())
+                .commentContent(result.getContent())
                 .build();
         commentMessagePublisher.publish(commentEventDto);
 

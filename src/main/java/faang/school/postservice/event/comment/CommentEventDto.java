@@ -1,5 +1,6 @@
 package faang.school.postservice.event.comment;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,8 +22,10 @@ public class CommentEventDto {
     private Long commenterId;
 
     @NotNull
-    private Long commentId;
+    @NotBlank
+    private String postContent;
 
     @NotNull
-    private Long postId;
+    @NotBlank
+    private String commentContent;
 }

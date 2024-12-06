@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class RedisMessagePublisher implements MessagePublisher<String> {
 
-    @Value("${spring.data.redis.channels.user-ban}")
+    @Value("${spring.data.redis.channel.user-ban}")
     private String userBan;
 
     private final RedisTemplate<String, Object> redisTemplate;
