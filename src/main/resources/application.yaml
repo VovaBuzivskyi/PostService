@@ -24,14 +24,16 @@ spring:
     redis:
       port: 6379
       host: localhost
-      channels:
-        calculations_channel:
-          name: calculations_channel
+      channel:
+        calculations_channel: calculations_channel
+        album: album_channel
+        user_ban: user_ban
+
 server:
   port: 8081
 
 cron:
-  check-comments: "0 0 0 * * ?"
+  check-comments: "0 * * * * ?"
 
 logging:
   level:

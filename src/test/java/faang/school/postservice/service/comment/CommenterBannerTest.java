@@ -1,7 +1,7 @@
 package faang.school.postservice.service.comment;
 
 import faang.school.postservice.dto.comment.CommentDto;
-import faang.school.postservice.redis.RedisMessagePublisher;
+import faang.school.postservice.redis.publisher.UserBanPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,7 +24,7 @@ public class CommenterBannerTest {
     private CommentService commentService;
 
     @Mock
-    private RedisMessagePublisher redisMessagePublisher;
+    private UserBanPublisher userBanPublisher;
 
     @InjectMocks
     private CommenterBanner commenterBanner;
@@ -42,7 +42,7 @@ public class CommenterBannerTest {
 
         commenterBanner.banCommenter();
 
-        verify(redisMessagePublisher, times(0)).publish(any());
+        verify(userBanPublisher, times(0)).publish(any());
     }
 
     @Test
@@ -65,7 +65,7 @@ public class CommenterBannerTest {
 
         commenterBanner.banCommenter();
 
-        verify(redisMessagePublisher, times(1)).publish(any());
+        verify(userBanPublisher, times(1)).publish(any());
     }
 
     @Test
