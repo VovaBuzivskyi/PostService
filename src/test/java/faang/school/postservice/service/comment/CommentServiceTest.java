@@ -2,11 +2,13 @@ package faang.school.postservice.service.comment;
 
 import faang.school.postservice.dto.comment.CommentDto;
 import faang.school.postservice.dto.post.PostDto;
+import faang.school.postservice.event.comment.CommentEventDto;
 import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.mapper.CommentMapper;
 import faang.school.postservice.model.Comment;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
+import faang.school.postservice.publisher.CommentMessagePublisher;
 import faang.school.postservice.repository.CommentRepository;
 import faang.school.postservice.service.post.PostService;
 import faang.school.postservice.validator.comment.CommentValidator;
@@ -49,27 +51,45 @@ public class CommentServiceTest {
     @Mock
     private PostService postService;
 
+    @Mock
+    private CommentMessagePublisher commentMessagePublisher;
+
     @InjectMocks
     private CommentService commentService;
 
     @Test
     public void createCommentTest() {
-        CommentDto commentDto = new CommentDto();
-        commentDto.setAuthorId(1L);
-        commentDto.setContent("Test");
-        commentDto.setPostId(1L);
+        CommentDto commentDto = CommentDto.builder()
+                .id(15L)
+                .authorId(1L)
+                .content("commentContent")
+                .postId(1L)
+                .build();
 
-        when(postService.getPostById(commentDto.getPostId())).thenReturn(new PostDto());
+        Post post = Post.builder()
+                .id(10L)
+                .content("postContent")
+                .authorId(100L)
+                .build();
 
-        Comment savedComment = new Comment();
-        savedComment.setAuthorId(commentDto.getAuthorId());
-        savedComment.setContent(commentDto.getContent());
-        savedComment.setCreatedAt(LocalDateTime.now());
-        savedComment.setPost(new Post());
+        CommentEventDto resultCommentEventDto = CommentEventDto.builder()
+                .postCreatorId(100L)
+                .commenterId(1L)
+                .postContent("postContent")
+                .commentContent("commentContent")
+                .build();
 
+        Comment savedComment = Comment.builder()
+                .id(15)
+                .authorId(commentDto.getAuthorId())
+                .content(commentDto.getContent())
+                .post(post)
+                .build();
 
+        when(postService.getPost(commentDto.getPostId())).thenReturn(post);
         doNothing().when(commentValidator).isAuthorExist(commentDto.getAuthorId());
-        when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
+        when(commentRepository.save(savedComment)).thenReturn(savedComment);
+        doNothing().when(commentMessagePublisher).publish(resultCommentEventDto);
 
         CommentDto result = commentService.createComment(commentDto);
 
@@ -80,6 +100,7 @@ public class CommentServiceTest {
         verify(commentMapper, times(1)).toEntity(commentDto);
         verify(commentRepository, times(1)).save(any(Comment.class));
         verify(commentMapper, times(1)).toDto(savedComment);
+        verify(commentMessagePublisher, times(1)).publish(resultCommentEventDto);
     }
 
     @Test
@@ -110,7 +131,7 @@ public class CommentServiceTest {
 
     @Test
     public void getAllCommentsTest() {
-        Long postId = 1L;
+        long postId = 1L;
 
         when(postService.getPostById(postId)).thenReturn(new PostDto());
 
