@@ -2,6 +2,7 @@ package faang.school.postservice.service.post;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import faang.school.postservice.config.thread_pool.ThreadPoolConfig;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
 import faang.school.postservice.exception.EntityNotFoundException;
@@ -12,6 +13,7 @@ import faang.school.postservice.model.Post;
 import faang.school.postservice.redis.RedisMessagePublisher;
 import faang.school.postservice.repository.PostRepository;
 import faang.school.postservice.validator.post.PostValidator;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
@@ -28,6 +30,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -62,7 +66,15 @@ public class PostServiceTest {
     @Captor
     private ArgumentCaptor<Post> captor;
 
+    @Mock
+    private ThreadPoolConfig threadPoolConfig;
+
     private static final int UNVERIFIED_POSTS_BAN_COUNT = 5;
+
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(postService, "batchSize", 2);
+    }
 
     @Test
     public void createPostTest() {
@@ -441,7 +453,7 @@ public class PostServiceTest {
     }
 
     @Test
-    void testGetPostsWhereVerifiedFalseNoIdsTest() {
+    void getPostsWhereVerifiedFalseNoIdsTest() {
         preparePostServiceMock();
 
         when(postRepository.findAuthorsIdsToBan(UNVERIFIED_POSTS_BAN_COUNT)).thenReturn(Collections.emptyList());
@@ -452,12 +464,13 @@ public class PostServiceTest {
     }
 
     @Test
-    void testGetPostsWhereVerifiedFalseExceptionTest() throws JsonProcessingException {
+    void getPostsWhereVerifiedFalseExceptionTest() throws JsonProcessingException {
         preparePostServiceMock();
         List<Long> authorIds = List.of(1L);
 
         when(postRepository.findAuthorsIdsToBan(UNVERIFIED_POSTS_BAN_COUNT)).thenReturn(authorIds);
-        when(objectMapper.writeValueAsString(1L)).thenThrow(new JsonProcessingException("Serialization failed") {});
+        when(objectMapper.writeValueAsString(1L)).thenThrow(new JsonProcessingException("Serialization failed") {
+        });
 
         assertThrows(RuntimeException.class, () -> postService.getPostsWhereVerifiedFalse());
 
@@ -466,10 +479,47 @@ public class PostServiceTest {
         verifyNoInteractions(redisMessagePublisher);
     }
 
+    @Test
+    public void publishScheduledPostTest() {
+        Post post1 = Post.builder()
+                .id(1L)
+                .published(false)
+                .build();
+        Post post2 = Post.builder()
+                .id(2L)
+                .published(false)
+                .build();
+        Post post3 = Post.builder()
+                .id(3L)
+                .published(false)
+                .build();
+
+        List<Post> mockPosts = new ArrayList<>(List.of(post1, post2, post3));
+        Executor executor = Executors.newFixedThreadPool(10);
+        ArgumentCaptor<List<Post>> captor = ArgumentCaptor.forClass(List.class);
+
+
+        when(threadPoolConfig.threadPoolExecutorForPublishingPosts()).thenReturn(executor);
+        when(postRepository.findReadyToPublish()).thenReturn(mockPosts);
+
+        postService.publishScheduledPosts();
+
+        verify(threadPoolConfig, times(1)).threadPoolExecutorForPublishingPosts();
+        verify(postRepository, times(1)).findReadyToPublish();
+        verify(postRepository, times(2)).saveAll(captor.capture());
+
+        List<List<Post>> capturedPosts = captor.getAllValues();
+        assertEquals(2, capturedPosts.size());
+
+        List<Post> allCapturedPosts = new ArrayList<>();
+        capturedPosts.forEach(allCapturedPosts::addAll);
+
+        assertTrue(allCapturedPosts.containsAll(mockPosts));
+        allCapturedPosts.forEach(post ->
+                assertTrue(post.isPublished()));
+    }
+
     private void preparePostServiceMock() {
         ReflectionTestUtils.setField(postService, "unverifiedPostsBanCount", UNVERIFIED_POSTS_BAN_COUNT);
     }
-
-
-
 }

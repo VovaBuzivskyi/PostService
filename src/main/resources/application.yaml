@@ -55,6 +55,11 @@ payment-service:
 
 post:
   unverified-posts-ban-count: 5
+  publish-posts:
+    batch-size: 1000
+    scheduling:
+      cron: "0 * * * * *"
+
 
 
 

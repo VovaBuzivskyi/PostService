@@ -6,6 +6,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 
 @Data
 @AllArgsConstructor
@@ -23,4 +25,6 @@ public class PostRequestDto {
     private boolean published;
 
     private boolean deleted;
+
+    private LocalDateTime scheduledAt;
 }
