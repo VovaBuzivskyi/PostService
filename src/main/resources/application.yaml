@@ -33,7 +33,7 @@ server:
   port: 8081
 
 cron:
-  check-comments: "0 * * * * ?"
+  check-comments: "0 0 0 * * ?"
 
 logging:
   level:
