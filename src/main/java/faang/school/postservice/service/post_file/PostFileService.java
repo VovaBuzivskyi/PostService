@@ -79,8 +79,11 @@ public class PostFileService {
     }
 
     public List<PostFileDto> getPostFilesInfo(long postId) {
+        long requesterId = userContext.getUserId();
+        log.info("Received request from user with ID: {} to get files info by post ID: {}", requesterId, postId);
         Post post = postService.getPost(postId);
         List<Resource> postFiles = resourceService.findAllByPostId(post.getId());
+        log.info("{} post files were found after the request of user with ID {}. Post ID: {}", postFiles.size(), requesterId, postId);
         return postFileMapper.toDtoList(postFiles);
     }
 

@@ -87,7 +87,6 @@ class ImageCompressionServiceTest {
     @Test
     void compressImageIOExceptionTest() {
         byte[] invalidData = "not-an-image".getBytes();
-
         assertThrows(IOException.class, () -> imageCompressionService.compressImage(invalidData, "jpg"));
     }
 }
