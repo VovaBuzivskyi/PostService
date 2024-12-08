@@ -10,7 +10,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 10MB
-      max-request-size: 10MB
+      max-request-size: 100MB
 
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
@@ -93,8 +93,9 @@ file-upload:
           - mkv
           - avi
           - mov
+          - quicktime
       audio:
-        max-size: 3145728
+        max-size: 5242880
         allowed-extensions:
           - mp3
           - wav

@@ -2,13 +2,15 @@ package faang.school.postservice.service.file;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.springframework.web.multipart.MultipartFile;
+import lombok.Setter;
 
+@Setter
 @Getter
 @AllArgsConstructor
-public class FileMetadata {
+public class FileData {
 
-    private MultipartFile file;
+    private byte[] data;
+    private String originalName;
     private String type;
     private String extension;
 }

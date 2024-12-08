@@ -1,11 +1,12 @@
 package faang.school.postservice.service.post_file;
 
 import faang.school.postservice.config.context.UserContext;
-import faang.school.postservice.event.file.FilesUploadedEvent;
+import faang.school.postservice.event.file.PostFilesUploadedEvent;
 import faang.school.postservice.model.Post;
 import faang.school.postservice.model.Resource;
+import faang.school.postservice.publisher.PostFilesUploadedEventPublisher;
 import faang.school.postservice.service.amazonS3.AmazonS3Service;
-import faang.school.postservice.service.file.FileMetadata;
+import faang.school.postservice.service.file.FileData;
 import faang.school.postservice.service.post.PostService;
 import faang.school.postservice.service.resource.ResourceService;
 import faang.school.postservice.validator.post_file.PostFileValidator;
@@ -25,7 +26,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PostFileService {
 
-
+    private final PostFilesUploadedEventPublisher postFilesUploadedEventPublisher;
     private final UserContext userContext;
     private final PostFileValidator postFileValidator;
     private final ResourceService resourceService;
@@ -42,34 +43,39 @@ public class PostFileService {
         postFileValidator.validateUploadFilesAmount(files);
         postFileValidator.validateAlreadyUploadedFilesAmount(files, alreadyUploadedFilesAmount);
         postFileValidator.validateFilesNotEmpty(files);
-        List<FileMetadata> fileMetadatas = postFileValidator.validateAndExtractFileMetadatas(files);
+        List<FileData> fileDatas = postFileValidator.validateAndExtractFileMetadatas(files);
 
         ConcurrentLinkedQueue<Resource> futureResources = new ConcurrentLinkedQueue<>();
         String folder = "post/%s".formatted(postId);
         CompletableFuture<Void> allUploads = CompletableFuture.allOf(
-                fileMetadatas.stream()
-                        .map(fileMetadata -> amazonS3Service.uploadFile(fileMetadata, folder)
+                fileDatas.stream()
+                        .map(fileData -> amazonS3Service.uploadFile(fileData, folder)
                                 .thenAccept(uploadFileInfo -> {
-                                    Resource resource = createResource(uploadFileInfo.getRight(), uploadFileInfo.getLeft());
+                                    Resource resource = createResource(uploadFileInfo.getRight(), uploadFileInfo.getLeft(), post);
                                     futureResources.add(resourceService.save(resource));
                                 })
-                        ).toArray(CompletableFuture[]::new)
-        );
+                        ).toArray(CompletableFuture[]::new));
+
         allUploads.thenRun(() -> {
-            FilesUploadedEvent event = new FilesUploadedEvent();
+            PostFilesUploadedEvent event = new PostFilesUploadedEvent();
             event.setUserId(requesterId);
             Map<String, String> keyToFileName = futureResources.stream()
-                    .collect(Collectors.toMap(Resource::getName, Resource::getKey));
+                    .collect(Collectors.toMap(
+                            Resource::getKey,
+                            Resource::getName
+                    ));
             event.setKeyToFileName(keyToFileName);
+            postFilesUploadedEventPublisher.publish(event);
         });
     }
 
-    private Resource createResource(FileMetadata fileMetadata, String key) {
+    private Resource createResource(FileData fileData, String key, Post post) {
         return Resource.builder()
                 .key(key)
-                .name(fileMetadata.getFile().getOriginalFilename())
-                .type("%s/%s".formatted(fileMetadata.getType(), fileMetadata.getExtension()))
-                .size(fileMetadata.getFile().getSize())
+                .name(fileData.getOriginalName())
+                .type("%s/%s".formatted(fileData.getType(), fileData.getExtension()))
+                .size(fileData.getData().length)
+                .post(post)
                 .build();
     }
 }

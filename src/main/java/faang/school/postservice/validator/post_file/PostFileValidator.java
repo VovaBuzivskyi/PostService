@@ -6,8 +6,8 @@ import faang.school.postservice.exception.ForbiddenException;
 import faang.school.postservice.model.Post;
 import faang.school.postservice.properties.PostFileUploadProperties;
 import faang.school.postservice.properties.PostFileUploadProperties.FileTypeInfo;
-import faang.school.postservice.service.file.FileMetadata;
-import faang.school.postservice.service.file.FileTypeDetectionService;
+import faang.school.postservice.service.file.FileData;
+import faang.school.postservice.service.file.FileDataDetectionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,7 +22,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class PostFileValidator {
 
-    private final FileTypeDetectionService fileTypeDetectionService;
+    private final FileDataDetectionService fileDataDetectionService;
     private final PostFileUploadProperties postFileUploadProperties;
 
     public void validateUploadFilesAmount(List<MultipartFile> files) {
@@ -56,48 +56,47 @@ public class PostFileValidator {
         }
     }
 
-    public List<FileMetadata> validateAndExtractFileMetadatas(List<MultipartFile> files) {
-        List<FileMetadata> fileMetadatas = new ArrayList<>();
+    public List<FileData> validateAndExtractFileMetadatas(List<MultipartFile> files) {
+        List<FileData> fileDatas = new ArrayList<>();
         for (MultipartFile file: files) {
             try {
-                FileMetadata fileMetadata = fileTypeDetectionService.detect(file);
-                validateFileExtension(fileMetadata);
-                validateFileSize(fileMetadata);
-                fileMetadatas.add(fileMetadata);
+                FileData fileData = fileDataDetectionService.detect(file);
+                validateFileExtension(fileData);
+                validateFileSize(fileData);
+                fileDatas.add(fileData);
             } catch (IOException e) {
                 throw new FileProcessException(
                         "The file named '%s' is unable to be processed.".formatted(file.getOriginalFilename()), e);
             }
         }
-        return fileMetadatas;
+        return fileDatas;
     }
 
-    private void validateFileExtension(FileMetadata fileMetadata) {
+    private void validateFileExtension(FileData fileData) {
         Map<String, FileTypeInfo> infoByFileType = postFileUploadProperties.getInfoByFileType();
-        FileTypeInfo fileTypeInfo = infoByFileType.getOrDefault(fileMetadata.getType(), infoByFileType.get("another"));
+        FileTypeInfo fileTypeInfo = infoByFileType.getOrDefault(fileData.getType(), infoByFileType.get("another"));
         Set<String> allowedExtensions = fileTypeInfo.getAllowedExtensions();
-        System.out.println(fileMetadata.getFile().getSize());
-        if (!allowedExtensions.contains(fileMetadata.getExtension())) {
+        System.out.println(fileData.getData().length);
+        if (!allowedExtensions.contains(fileData.getExtension())) {
             throw new DataValidationException(
                     String.format("The file named '%s' is not allowed to be uploaded due to extension. Allowed extensions: %s.",
-                            fileMetadata.getFile().getOriginalFilename(), allowedExtensions)
+                            fileData.getOriginalName(), allowedExtensions)
             );
         }
     }
 
-    private void validateFileSize(FileMetadata fileMetadata) {
+    private void validateFileSize(FileData fileData) {
         Map<String, FileTypeInfo> infoByFileType = postFileUploadProperties.getInfoByFileType();
-        MultipartFile file = fileMetadata.getFile();
-        FileTypeInfo fileTypeInfo = infoByFileType.getOrDefault(fileMetadata.getType(), infoByFileType.get("another"));
+        FileTypeInfo fileTypeInfo = infoByFileType.getOrDefault(fileData.getType(), infoByFileType.get("another"));
         int fileTypeMaxSize = fileTypeInfo.getMaxSize();
 
-        if (file.getSize() > fileTypeMaxSize) {
+        if (fileData.getData().length > fileTypeMaxSize) {
             String sizeExceedMessage = String.format(
                     "The file named '%s' with type '%s' exceeds the maximum allowed size. " +
                             "File size: %d bytes, allowed: %d bytes.",
-                    file.getOriginalFilename(),
-                    fileMetadata.getType(),
-                    file.getSize(),
+                    fileData.getOriginalName(),
+                    fileData.getType(),
+                    fileData.getData().length,
                     fileTypeMaxSize
             );
             throw new DataValidationException(sizeExceedMessage);

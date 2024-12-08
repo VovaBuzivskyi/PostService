@@ -23,10 +23,10 @@ public class ImageCompressionService {
     @Value("${file-upload.post.image-size-limits.rectangular.max-short-side-length}")
     private int maxRectangularShortSideLength;
 
-    public InputStream compressImage(InputStream imageInputStream, String extension) throws IOException {
-        BufferedImage image = ImageIO.read(imageInputStream);
+    public byte[] compressImage(byte[] imageData, String extension) throws IOException {
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageData));
         if (image == null) {
-            throw new IOException("Failed to read the image from the input stream.");
+            throw new IOException("Failed to read the image from the byte array.");
         }
 
         int width = image.getWidth();
@@ -48,9 +48,9 @@ public class ImageCompressionService {
                     .outputFormat(extension)
                     .toOutputStream(outputStream);
         } else {
-            return imageInputStream;
+            return imageData;
         }
 
-        return new ByteArrayInputStream(outputStream.toByteArray());
+        return outputStream.toByteArray();
     }
 }

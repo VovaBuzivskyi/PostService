@@ -13,7 +13,7 @@ import java.util.Map;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class FilesUploadedEvent {
+public class PostFilesUploadedEvent {
 
     private long userId;
     private Map<String, String> keyToFileName;

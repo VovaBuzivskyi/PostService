@@ -11,22 +11,22 @@ import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
-public class FileTypeDetectionService {
+public class FileDataDetectionService {
 
     private static final Pattern BEFORE_AND_AFTER_SLASH_PATTERN = Pattern.compile("([^/]+)/([^/]+)");
 
     private final Tika tika;
 
-    public FileMetadata detect(MultipartFile file) throws IOException {
+    public FileData detect(MultipartFile file) throws IOException {
+        byte[] fileData = file.getBytes();
         String typeWithExtension = tika.detect(file.getInputStream());
         Matcher matcher = BEFORE_AND_AFTER_SLASH_PATTERN.matcher(typeWithExtension);
-
         if (matcher.find()) {
             String type = matcher.group(1);
             String extension = matcher.group(2);
-            return new FileMetadata(file, type, extension);
-        }
 
-        return new FileMetadata(file, "another", "");
+            return new FileData(fileData, file.getOriginalFilename(), type, extension);
+        }
+        return new FileData(fileData, file.getOriginalFilename(),"another", "");
     }
 }
