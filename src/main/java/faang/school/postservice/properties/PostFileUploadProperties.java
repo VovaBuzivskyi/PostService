@@ -1,5 +1,6 @@
 package faang.school.postservice.properties;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -22,6 +23,7 @@ public class PostFileUploadProperties {
 
     @Getter
     @Setter
+    @AllArgsConstructor
     public static class FileTypeInfo {
 
         private int maxSize;
