@@ -1,12 +1,12 @@
 package faang.school.postservice.exception.handler;
 
 import faang.school.postservice.exception.DataValidationException;
+import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.exception.FeignClientException;
 import faang.school.postservice.exception.FileProcessException;
 import faang.school.postservice.exception.ForbiddenException;
 import faang.school.postservice.exception.PostException;
 import faang.school.postservice.exception.UnauthorizedException;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;

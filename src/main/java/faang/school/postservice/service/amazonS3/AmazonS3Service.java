@@ -1,12 +1,15 @@
 package faang.school.postservice.service.amazonS3;
 
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
 import faang.school.postservice.exception.FileProcessException;
 import faang.school.postservice.service.file.FileData;
 import faang.school.postservice.service.image.ImageCompressionService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
@@ -18,6 +21,7 @@ import java.io.InputStream;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AmazonS3Service {
@@ -32,6 +36,7 @@ public class AmazonS3Service {
 
     @Async("fileUploadTaskExecutor")
     public CompletableFuture<Pair<String, FileData>> uploadFile(FileData fileMetadata, String folder) {
+        log.info("Starting uploading file named '{}' to folder named '{}'", fileMetadata.getOriginalName(), folder);
         try {
             byte[] fileData = fileMetadata.getType().equals(IMAGE_TYPE)
                     ? compressImage(fileMetadata)
@@ -39,10 +44,32 @@ public class AmazonS3Service {
             try (ByteArrayInputStream fileStream = new ByteArrayInputStream(fileData)) {
                 PutObjectRequest request = createPutObjectRequest(fileStream, fileMetadata, folder);
                 amazonS3Client.putObject(request);
+                log.info("Finished uploading file named '{}' to folder named '{}'", fileMetadata.getOriginalName(), folder);
                 return CompletableFuture.completedFuture(Pair.of(request.getKey(), fileMetadata));
             }
         } catch (IOException e) {
             throw new FileProcessException("Error occurred while uploading file: " + fileMetadata.getOriginalName(), e);
+        }
+    }
+
+    public void deleteFile(String fileKey) {
+        log.info("Starting deleting file with key '{}'", fileKey);
+        try {
+            amazonS3Client.deleteObject(bucketName, fileKey);
+            log.info("File with key '{}' was deleted successfully from S3", fileKey);
+        } catch (Exception e) {
+            throw new FileProcessException("Error occurred while deleting file from S3: %s".formatted(fileKey), e);
+        }
+    }
+
+    public S3Object getFileFromS3(String fileKey) {
+        log.info("Starting downloading file with key '{}'", fileKey);
+        try {
+            S3Object file = amazonS3Client.getObject(new GetObjectRequest(bucketName, fileKey));
+            log.info("File with key '{}' was downloaded successfully from S3", fileKey);
+            return file;
+        } catch (Exception e) {
+            throw new FileProcessException("Error occurred while downloading file from S3: %s".formatted(fileKey), e);
         }
     }
 
