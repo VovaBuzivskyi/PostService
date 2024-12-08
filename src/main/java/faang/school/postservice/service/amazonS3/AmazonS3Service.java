@@ -1,5 +1,8 @@
 package faang.school.postservice.service.amazonS3;
 
+import com.amazonaws.AmazonClientException;
+import com.amazonaws.AmazonServiceException;
+import com.amazonaws.SdkClientException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
@@ -35,20 +38,20 @@ public class AmazonS3Service {
     private String bucketName;
 
     @Async("fileUploadTaskExecutor")
-    public CompletableFuture<Pair<String, FileData>> uploadFile(FileData fileMetadata, String folder) {
-        log.info("Starting uploading file named '{}' to folder named '{}'", fileMetadata.getOriginalName(), folder);
+    public CompletableFuture<Pair<String, FileData>> uploadFile(FileData fileData, String folder) {
+        log.info("Starting uploading file named '{}' to folder named '{}'", fileData.getOriginalName(), folder);
         try {
-            byte[] fileData = fileMetadata.getType().equals(IMAGE_TYPE)
-                    ? compressImage(fileMetadata)
-                    : fileMetadata.getData();
-            try (ByteArrayInputStream fileStream = new ByteArrayInputStream(fileData)) {
-                PutObjectRequest request = createPutObjectRequest(fileStream, fileMetadata, folder);
+            byte[] fileBytes = fileData.getType().equals(IMAGE_TYPE)
+                    ? compressImage(fileData)
+                    : fileData.getData();
+            try (ByteArrayInputStream fileStream = new ByteArrayInputStream(fileBytes)) {
+                PutObjectRequest request = createPutObjectRequest(fileStream, fileData, folder);
                 amazonS3Client.putObject(request);
-                log.info("Finished uploading file named '{}' to folder named '{}'", fileMetadata.getOriginalName(), folder);
-                return CompletableFuture.completedFuture(Pair.of(request.getKey(), fileMetadata));
+                log.info("Finished uploading file named '{}' to folder named '{}'", fileData.getOriginalName(), folder);
+                return CompletableFuture.completedFuture(Pair.of(request.getKey(), fileData));
             }
-        } catch (IOException e) {
-            throw new FileProcessException("Error occurred while uploading file: " + fileMetadata.getOriginalName(), e);
+        } catch (IOException | SdkClientException e) {
+            throw new FileProcessException("Error occurred while uploading file: %s".formatted(fileData.getOriginalName()), e);
         }
     }
 
@@ -57,7 +60,7 @@ public class AmazonS3Service {
         try {
             amazonS3Client.deleteObject(bucketName, fileKey);
             log.info("File with key '{}' was deleted successfully from S3", fileKey);
-        } catch (Exception e) {
+        } catch (SdkClientException e) {
             throw new FileProcessException("Error occurred while deleting file from S3: %s".formatted(fileKey), e);
         }
     }
@@ -68,7 +71,7 @@ public class AmazonS3Service {
             S3Object file = amazonS3Client.getObject(new GetObjectRequest(bucketName, fileKey));
             log.info("File with key '{}' was downloaded successfully from S3", fileKey);
             return file;
-        } catch (Exception e) {
+        } catch (SdkClientException e) {
             throw new FileProcessException("Error occurred while downloading file from S3: %s".formatted(fileKey), e);
         }
     }

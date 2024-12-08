@@ -31,7 +31,7 @@ class ImageCompressionServiceTest {
     }
 
     @Test
-    void compressImageSquareImageExceedsLimit() throws IOException {
+    void compressImageSquareImageExceedsLimitTest() throws IOException {
         BufferedImage squareImage = new BufferedImage(1000, 1000, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         ImageIO.write(squareImage, "jpg", outputStream);
@@ -45,7 +45,7 @@ class ImageCompressionServiceTest {
     }
 
     @Test
-    void compressImageRectangularImageExceedsLongSideLimit() throws IOException {
+    void compressImageRectangularImageExceedsLongSideLimitTest() throws IOException {
         BufferedImage rectangularImage = new BufferedImage(1000, 200, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         ImageIO.write(rectangularImage, "jpg", outputStream);
@@ -59,7 +59,7 @@ class ImageCompressionServiceTest {
     }
 
     @Test
-    void compressImageRectangularImageExceedsShortSideLimit() throws IOException {
+    void compressImageRectangularImageExceedsShortSideLimitTest() throws IOException {
         BufferedImage rectangularImage = new BufferedImage(500, 700, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         ImageIO.write(rectangularImage, "jpg", outputStream);
@@ -73,7 +73,7 @@ class ImageCompressionServiceTest {
     }
 
     @Test
-    void compressImageAlreadyValidSize() throws IOException {
+    void compressImageAlreadyValidSizeTest() throws IOException {
         BufferedImage validImage = new BufferedImage(400, 400, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         ImageIO.write(validImage, "jpg", outputStream);
@@ -85,7 +85,7 @@ class ImageCompressionServiceTest {
     }
 
     @Test
-    void compressImageInvalidImageDataThrowsIOException() {
+    void compressImageIOExceptionTest() {
         byte[] invalidData = "not-an-image".getBytes();
 
         assertThrows(IOException.class, () -> imageCompressionService.compressImage(invalidData, "jpg"));
