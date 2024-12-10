@@ -1,6 +1,6 @@
 package faang.school.postservice.redis.publisher;
 
-import faang.school.postservice.model.AlbumCreatedEvent;
+import faang.school.postservice.event.AlbumCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;

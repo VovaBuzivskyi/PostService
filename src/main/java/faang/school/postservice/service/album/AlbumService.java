@@ -15,7 +15,7 @@ import faang.school.postservice.exception.UnauthorizedException;
 import faang.school.postservice.filter.album.AlbumFilter;
 import faang.school.postservice.mapper.AlbumMapper;
 import faang.school.postservice.model.Album;
-import faang.school.postservice.model.AlbumCreatedEvent;
+import faang.school.postservice.event.AlbumCreatedEvent;
 import faang.school.postservice.model.Post;
 import faang.school.postservice.redis.publisher.AlbumCreatedPublisher;
 import faang.school.postservice.repository.AlbumRepository;
