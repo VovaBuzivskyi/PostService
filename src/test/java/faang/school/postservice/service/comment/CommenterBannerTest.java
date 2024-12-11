@@ -2,6 +2,7 @@ package faang.school.postservice.service.comment;
 
 import faang.school.postservice.dto.comment.CommentDto;
 import faang.school.postservice.redis.publisher.UserBanPublisher;
+import faang.school.postservice.publisher.RedisMessagePublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

@@ -37,7 +37,7 @@ public class CommentValidatorTest {
     @Test
     public void isAuthorExistTest() {
         Long authorId = 1L;
-        UserDto userDto = new UserDto(authorId, "test", "test");
+        UserDto userDto = new UserDto(authorId, "test", "test", false);
         when(userServiceClient.getUser(authorId)).thenReturn(userDto);
         commentValidator.isAuthorExist(authorId);
         verify(userServiceClient, times(1)).getUser(authorId);

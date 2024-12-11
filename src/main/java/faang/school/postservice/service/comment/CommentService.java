@@ -1,13 +1,17 @@
 package faang.school.postservice.service.comment;
 
 import faang.school.postservice.dto.comment.CommentDto;
+import faang.school.postservice.event.comment.CommentEventDto;
 import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.mapper.CommentMapper;
 import faang.school.postservice.model.Comment;
 import faang.school.postservice.model.Like;
+import faang.school.postservice.model.Post;
+import faang.school.postservice.publisher.CommentMessagePublisher;
 import faang.school.postservice.repository.CommentRepository;
 import faang.school.postservice.service.post.PostService;
 import faang.school.postservice.validator.comment.CommentValidator;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,12 +31,24 @@ public class CommentService {
     private final CommentMapper commentMapper;
     private final CommentValidator commentValidator;
     private final PostService postService;
+    private final CommentMessagePublisher commentMessagePublisher;
 
+    @Transactional
     public CommentDto createComment(CommentDto commentDto) {
-        postService.getPostById(commentDto.getPostId());
+        Post post = postService.getPost(commentDto.getPostId());
         commentValidator.isAuthorExist(commentDto.getAuthorId());
-        commentDto.setCreatedAt(LocalDateTime.now());
-        Comment result = commentRepository.save(commentMapper.toEntity(commentDto));
+        Comment commentToSave = commentMapper.toEntity(commentDto);
+        commentToSave.setPost(post);
+        Comment result = commentRepository.save(commentToSave);
+
+        CommentEventDto commentEventDto = CommentEventDto.builder()
+                .postCreatorId(result.getPost().getAuthorId())
+                .commenterId(result.getAuthorId())
+                .postContent(result.getPost().getContent())
+                .commentContent(result.getContent())
+                .build();
+        commentMessagePublisher.publish(commentEventDto);
+
         return commentMapper.toDto(result);
     }
 
