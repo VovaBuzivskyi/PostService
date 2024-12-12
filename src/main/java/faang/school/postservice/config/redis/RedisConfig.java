@@ -13,7 +13,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 @Configuration
 @RequiredArgsConstructor
-public class RedisPublisherConfig {
+public class RedisConfig {
 
     private final ObjectMapper objectMapper;
 
