@@ -35,6 +35,8 @@ dependencies {
     /**
      * Utils & Logging
      */
+    implementation("org.apache.commons:commons-lang3:3.0")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.13.3")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.14.2")
     implementation("org.slf4j:slf4j-api:2.0.5")
     implementation("ch.qos.logback:logback-classic:1.4.6")
@@ -44,9 +46,21 @@ dependencies {
     annotationProcessor("org.mapstruct:mapstruct-processor:1.5.3.Final")
 
     /**
+     * Files
+     */
+    implementation("net.coobird:thumbnailator:0.4.14")
+    implementation("org.apache.tika:tika-core:2.9.1")
+
+    /**
      * Swagger
      */
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.0.3")
+
+    /**
+     * Amazon S3
+     */
+    implementation("com.amazonaws:aws-java-sdk-s3:1.12.464")
+    implementation("io.minio:minio:8.3.3")
 
     /**
      * Test containers
