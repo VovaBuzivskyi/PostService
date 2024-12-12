@@ -2,7 +2,7 @@ package faang.school.postservice.dto.album;
 
 import faang.school.postservice.enums.VisibilityAlbums;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,7 +27,7 @@ public class AlbumCreateUpdateDto {
     @Size(max = 4096, message = "Title length cannot exceed 4096 symbols!")
     private String description;
 
-    @NotEmpty
+    @NotNull
     private VisibilityAlbums visibility;
 
     private List<Long> beholdersIds;

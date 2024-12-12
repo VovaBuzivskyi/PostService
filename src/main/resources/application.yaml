@@ -25,10 +25,10 @@ spring:
       port: 6379
       host: localhost
       channel:
-        user-ban: user_ban
+        calculations_channel: calculations_channel
+        album: album_channel
+        user_ban: user_ban
         comment: comment_channel
-        calculations_channel:
-          name: calculations_channel
 
 server:
   port: 8081
