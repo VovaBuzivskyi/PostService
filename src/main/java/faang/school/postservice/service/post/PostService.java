@@ -12,12 +12,14 @@ import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
 import faang.school.postservice.publisher.RedisMessagePublisher;
 import faang.school.postservice.repository.PostRepository;
+import faang.school.postservice.service.hashtag.HashtagService;
 import faang.school.postservice.validator.post.PostValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -39,6 +41,7 @@ public class PostService {
     private final RedisMessagePublisher redisMessagePublisher;
     private final ObjectMapper objectMapper;
     private final ThreadPoolConfig threadPoolConfig;
+    private final HashtagService hashtagService;
 
     @Value("${post.unverified-posts-ban-count}")
     private Integer unverifiedPostsBanCount;
@@ -53,8 +56,10 @@ public class PostService {
         createPost.setPublished(false);
         createPost.setDeleted(false);
 
+        createPost = postRepository.save(createPost);
         log.info("Post with id {} - created", createPost.getId());
-        return postMapper.toDto(postRepository.save(createPost));
+        hashtagService.takeHashtags(createPost);
+        return postMapper.toDto(createPost);
     }
 
     public PostDto publishPost(Long postId) {
@@ -66,12 +71,14 @@ public class PostService {
         return postMapper.toDto(postRepository.save(publishedPost));
     }
 
+    @Transactional
     public PostDto updatePost(PostDto postDto) {
         Post post = getPost(postDto.getId());
         postValidator.checkUpdatePost(post, postDto);
 
         postMapper.updatePostFromDto(postDto, post);
 
+        hashtagService.checkHashtags(post);
         log.info("Post with id {} - updated", post.getId());
         return postMapper.toDto(postRepository.save(post));
     }

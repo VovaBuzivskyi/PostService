@@ -27,13 +27,13 @@ spring:
       channel:
         user-ban: user_ban
         comment: comment_channel
-        calculations_channel:
-          name: calculations_channel
+        calculations: calculations_channel
 
 server:
   port: 8081
 
 cron:
+  update-cache: "0/15 * * * * ?"
   check-comments: "0 0 0 * * ?"
   unverified-posts: 0 47 16 * * ?
 
