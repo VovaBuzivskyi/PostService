@@ -6,6 +6,8 @@ import faang.school.postservice.service.hashtag.HashtagCacheService;
 import faang.school.postservice.service.hashtag.HashtagService;
 import faang.school.postservice.service.like.LikeService;
 import faang.school.postservice.service.post.PostService;
+import faang.school.postservice.service.post_file.PostFileService;
+import faang.school.postservice.service.resource.ResourceService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -36,6 +38,12 @@ class PostServiceAppTests {
 
     @MockBean
     private PostService postService;
+
+    @MockBean
+    private PostFileService postFileService;
+
+    @MockBean
+    private ResourceService resourceService;
 
     @Test
     @DisplayName("Test context loading")
