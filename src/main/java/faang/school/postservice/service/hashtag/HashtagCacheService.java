@@ -1,4 +1,4 @@
-package faang.school.postservice.service.redis;
+package faang.school.postservice.service.hashtag;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,7 +15,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
-public class RedisService {
+public class HashtagCacheService {
 
     private final static String HASHTAGS = "Hashtags";
     private final static String POPULAR_HASHTAGS = "Popular_hashtags";
@@ -26,7 +26,7 @@ public class RedisService {
     private final RedisTemplate<String, Map<String, List<PostDto>>> redisTemplateForHashtags;
     private final RedisTemplate<String, String> redisTemplate;
 
-    public void savePostsGroupedByHashtag(Map<String, Set<PostDto>> posts) {
+    protected void savePostsGroupedByHashtag(Map<String, Set<PostDto>> posts) {
         redisTemplateForHashtags.opsForHash().putAll(HASHTAGS, posts);
 
         for (String hashtag : posts.keySet()) {
@@ -34,7 +34,7 @@ public class RedisService {
         }
     }
 
-    public List<String> getPopularHashtags() {
+    protected List<String> getPopularHashtags() {
         return Objects.requireNonNull(
                 redisTemplate.opsForZSet().reverseRange(
                         HASHTAGS_SCORES,
@@ -44,7 +44,7 @@ public class RedisService {
                 .toList();
     }
 
-    public void updateHashtagCache(Map<String, Set<PostDto>> posts) {
+    protected void updateHashtagCache(Map<String, Set<PostDto>> posts) {
         for (var entry : posts.entrySet()) {
             String key = entry.getKey();
             Set<PostDto> value = entry.getValue();
@@ -67,7 +67,7 @@ public class RedisService {
         }
     }
 
-    public List<PostDto> getPostsGroupedByHashtag(String hashtag) {
+    protected List<PostDto> getPostsGroupedByHashtag(String hashtag) {
         Object redisData = null;
         if (redisTemplateForHashtags.opsForHash().hasKey(POPULAR_HASHTAGS, hashtag)) {
             redisData = redisTemplateForHashtags.opsForHash().get(POPULAR_HASHTAGS, hashtag);
@@ -84,17 +84,17 @@ public class RedisService {
         }
     }
 
-    public void updatePopularHashtagCache(Map<String, List<PostDto>> posts) {
+    protected void updatePopularHashtagCache(Map<String, List<PostDto>> posts) {
         redisTemplateForHashtags.opsForHash().getOperations().delete(POPULAR_HASHTAGS);
         redisTemplateForHashtags.opsForHash().putAll(POPULAR_HASHTAGS, posts);
     }
 
-    public List<PostDto> getPostDtosByHashtag(String hashtag) {
+    protected List<PostDto> getPostDtosByHashtag(String hashtag) {
         return objectMapper.convertValue(redisTemplateForHashtags.opsForHash().get(HASHTAGS, hashtag),
                 new TypeReference<>() {});
     }
 
-    public void cleanCache() {
+    protected void cleanCache() {
         Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().flushDb();
     }
 }

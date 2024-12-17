@@ -1,0 +1,5 @@
+databaseChangeLog:
+  - include:
+      file: classpath:db/changelog/db.changelog-master.yaml
+  - include:
+      file: classpath:db/changeset/test-data.sql

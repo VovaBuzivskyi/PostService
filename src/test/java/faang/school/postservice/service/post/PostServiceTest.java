@@ -12,6 +12,7 @@ import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
 import faang.school.postservice.publisher.RedisMessagePublisher;
 import faang.school.postservice.repository.PostRepository;
+import faang.school.postservice.service.hashtag.HashtagService;
 import faang.school.postservice.validator.post.PostValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,9 @@ public class PostServiceTest {
 
     @Mock
     private ObjectMapper objectMapper;
+
+    @Mock
+    private HashtagService hashtagService;
 
     @InjectMocks
     private PostService postService;

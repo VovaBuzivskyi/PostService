@@ -38,9 +38,7 @@ public interface HashtagRepository extends JpaRepository<Hashtag, Long>{
             AND p.deleted = FALSE
         GROUP BY
             h.hashtag
-        HAVING
-            COUNT(p.id) <= 100
-    """, nativeQuery = true)//todo запрос в БД переделать время? Количество?
+    """, nativeQuery = true)
     List<Object[]> findAllHashtagsWithPostIds();
 
     Set<Hashtag> findByPostId(long postId);

@@ -6,7 +6,6 @@ import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.model.Hashtag;
 import faang.school.postservice.model.Post;
 import faang.school.postservice.repository.HashtagRepository;
-import faang.school.postservice.service.redis.RedisService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -31,21 +30,39 @@ public class HashtagService {
     private final static String PATTERN = "#[\\p{L}\\p{N}_]+(?=[\\s.,!?;:()\"']|$)";
 
     private final HashtagRepository hashtagRepository;
-    private final RedisService redisService;
+    private final HashtagCacheService hashtagCacheService;
     private final ObjectMapper objectMapper;
+
+    public void takeHashtags(Post post) {
+        Set<Hashtag> hashtags = defineHashtags(post);
+        hashtagRepository.saveAll(hashtags);
+    }
+
+    public void checkHashtags(Post post) {
+        Set<Hashtag> newHashtags = defineHashtags(post);
+        Set<Hashtag> hashTags = hashtagRepository.findByPostId(post.getId());
+        if (!newHashtags.equals(hashTags)) {
+            hashtagRepository.deleteAllByPostId(post.getId());
+            hashtagRepository.saveAll(newHashtags);
+        }
+    }
+
+    public List<PostDto> getPostsByHashtag(String hashtag) {
+        return getPostIdsByHashtag(hashtag.toLowerCase());
+    }
 
     @PostConstruct
     private void fillCache() {
         Map<String, Set<PostDto>> postsGroupedByHashtag = getMapWithPost();
 
-        redisService.savePostsGroupedByHashtag(postsGroupedByHashtag);
+        hashtagCacheService.savePostsGroupedByHashtag(postsGroupedByHashtag);
     }
 
     @Scheduled(cron = "${cron.update-cache}")
     private void updateHashtagCache() {
         Map<String, Set<PostDto>> postsGroupedByHashtag = getMapWithPost();
 
-        redisService.updateHashtagCache(postsGroupedByHashtag);
+        hashtagCacheService.updateHashtagCache(postsGroupedByHashtag);
     }
 
     private Map<String, Set<PostDto>> getMapWithPost() {
@@ -54,23 +71,19 @@ public class HashtagService {
 
     @Scheduled(cron = "${cron.update-cache}")
     private void updatePopularHashtagCache() {
-        List<String> hashtags = redisService.getPopularHashtags();
+        List<String> hashtags = hashtagCacheService.getPopularHashtags();
         Map<String, List<PostDto>> posts = hashtags.stream()
                 .collect(Collectors.toMap(
                         string -> string,
-                        redisService::getPostDtosByHashtag
+                        hashtagCacheService::getPostDtosByHashtag
                 ));
-        redisService.updatePopularHashtagCache(posts);
+        hashtagCacheService.updatePopularHashtagCache(posts);
     }
 
     @PreDestroy
     private void cleaningCache() {
-        redisService.cleanCache();
+        hashtagCacheService.cleanCache();
         log.info("Achievement cache cleaned");
-    }
-
-    public List<PostDto> getPostsByHashtag(String hashtag) {
-        return getPostIdsByHashtag(hashtag.toLowerCase());
     }
 
     private Map<String, Set<PostDto>> findAllHashtagsWithPostIds() {
@@ -86,21 +99,7 @@ public class HashtagService {
     }
 
     private List<PostDto> getPostIdsByHashtag(String hashtag) {
-        return redisService.getPostsGroupedByHashtag(hashtag);
-    }
-
-    public void takeHashtags(Post post) {
-        Set<Hashtag> hashtags = defineHashtags(post);
-        hashtagRepository.saveAll(hashtags);
-    }
-
-    public void checkHashtags(Post post) {
-        Set<Hashtag> newHashtags = defineHashtags(post);
-        Set<Hashtag> hashTags = hashtagRepository.findByPostId(post.getId());
-        if (!newHashtags.equals(hashTags)) {
-            hashtagRepository.deleteAllByPostId(post.getId());
-            hashtagRepository.saveAll(newHashtags);
-        }
+        return hashtagCacheService.getPostsGroupedByHashtag(hashtag);
     }
 
     private Set<Hashtag> defineHashtags(Post post) {

@@ -59,12 +59,3 @@ post:
     batch-size: 1000
     scheduling:
       cron: "0 * * * * *"
-
-
-
-
-
-
-
-
-
