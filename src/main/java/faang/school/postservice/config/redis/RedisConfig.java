@@ -16,6 +16,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import java.util.List;
 import java.util.Map;
 
+
 @Configuration
 @RequiredArgsConstructor
 public class RedisConfig {
@@ -35,10 +36,11 @@ public class RedisConfig {
     }
 
     @Bean
+
     public RedisTemplate<String, String> redisTemplate() {
         final RedisTemplate<String, String> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(jedisConnectionFactory());
-
+        
         redisTemplate.setKeySerializer(new StringRedisSerializer());
         redisTemplate.setValueSerializer(new Jackson2JsonRedisSerializer<>(objectMapper, Object.class));
 

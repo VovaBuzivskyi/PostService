@@ -1,6 +1,7 @@
 package faang.school.postservice.service.comment;
 
 import faang.school.postservice.dto.comment.CommentDto;
+import faang.school.postservice.redis.publisher.UserBanPublisher;
 import faang.school.postservice.publisher.RedisMessagePublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 public class CommenterBanner {
 
     private final CommentService commentService;
-    private final RedisMessagePublisher redisMessagePublisher;
+    private final UserBanPublisher userBanPublisher;
 
     @Scheduled(cron = "${cron.check-comments}")
     public void banCommenter() {
@@ -33,7 +34,7 @@ public class CommenterBanner {
                 .toList();
         for(Long author : authorsToBanned) {
             log.info("Author {} is banned", author);
-            redisMessagePublisher.publish(author.toString());
+            userBanPublisher.publish(author);
         }
     }
 }

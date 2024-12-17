@@ -15,7 +15,9 @@ import faang.school.postservice.exception.UnauthorizedException;
 import faang.school.postservice.filter.album.AlbumFilter;
 import faang.school.postservice.mapper.AlbumMapper;
 import faang.school.postservice.model.Album;
+import faang.school.postservice.event.AlbumCreatedEvent;
 import faang.school.postservice.model.Post;
+import faang.school.postservice.redis.publisher.AlbumCreatedPublisher;
 import faang.school.postservice.repository.AlbumRepository;
 import faang.school.postservice.service.post.PostService;
 import feign.FeignException;
@@ -43,6 +45,7 @@ public class AlbumService {
     private final AlbumMapper albumMapper;
     private final PostService postService;
     private final List<AlbumFilter> filters;
+    private final AlbumCreatedPublisher albumCreatedPublisher;
 
     @Transactional
     public AlbumDto createAlbum(AlbumCreateUpdateDto createDto) {
@@ -57,6 +60,10 @@ public class AlbumService {
             albumToSave.setVisibility(VisibilityAlbums.ALL_USERS);
         }
         Album savedAlbum = albumRepository.save(albumToSave);
+
+        AlbumCreatedEvent albumCreatedEvent = new AlbumCreatedEvent(requesterUserId, savedAlbum.getId(),
+                                                                    savedAlbum.getTitle());
+        albumCreatedPublisher.publish(albumCreatedEvent);
 
         log.info("User with ID {} successfully created album with ID {} titled '{}'", requesterUserId, savedAlbum.getId(), createDto.getTitle());
         return albumMapper.toDtoList(savedAlbum);

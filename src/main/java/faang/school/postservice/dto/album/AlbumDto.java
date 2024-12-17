@@ -2,7 +2,7 @@ package faang.school.postservice.dto.album;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import faang.school.postservice.enums.VisibilityAlbums;
-import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -25,7 +25,7 @@ public class AlbumDto {
     private long authorId;
     private List<Long> postIds;
 
-    @NotEmpty
+    @NotNull
     private VisibilityAlbums visibility;
 
     private List<Long> beholdersIds;
