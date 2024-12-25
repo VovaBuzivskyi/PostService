@@ -1,0 +1,18 @@
+spring:
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/db.changelog-test.yaml
+
+publish-posts:
+  batch-size: 1000
+  scheduling:
+    cron: "0 * * * * *"

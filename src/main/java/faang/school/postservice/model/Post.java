@@ -33,7 +33,7 @@ public class Post {
     @Column(name = "project_id")
     private Long projectId;
 
-    @OneToMany(mappedBy = "post", orphanRemoval = true)
+    @OneToMany(mappedBy = "post", orphanRemoval = true, fetch = FetchType.EAGER)
     private List<Like> likes;
 
     @OneToMany(mappedBy = "post", orphanRemoval = true)

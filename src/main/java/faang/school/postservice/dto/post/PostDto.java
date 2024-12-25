@@ -37,5 +37,7 @@ public class PostDto {
 
     private LocalDateTime updatedAt;
 
+    private boolean verified;
+
     private long likesCount;
 }

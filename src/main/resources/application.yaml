@@ -33,6 +33,7 @@ spring:
         album: album_channel
         user_ban: user_ban
         comment: comment_channel
+        calculations: calculations_channel
         files-uploaded: files_uploaded_channel
 
 server:
@@ -42,6 +43,7 @@ server:
     max-http-header-size: 2097152
 
 cron:
+  update-cache: "0/15 * * * * ?"
   check-comments: "0 0 0 * * ?"
   unverified-posts: 0 47 16 * * ?
 
@@ -116,12 +118,3 @@ task-executor:
     core-pool-size: 10
     max-pool-size: 20
     queue-capacity: 50
-
-
-
-
-
-
-
-
-

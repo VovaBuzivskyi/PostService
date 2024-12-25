@@ -13,7 +13,7 @@ public class CommentMessagePublisher implements MessagePublisher<CommentEventDto
     @Value("${spring.data.redis.channel.comment}")
     private String commentEventTopic;
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
     public void publish(CommentEventDto commentEventDto) {
         redisTemplate.convertAndSend(commentEventTopic, commentEventDto);

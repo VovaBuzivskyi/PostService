@@ -12,7 +12,7 @@ public class RedisMessagePublisher implements MessagePublisher<String> {
     @Value("${spring.data.redis.channel.user-ban}")
     private String userBan;
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
     public void publish(String message) {
         redisTemplate.convertAndSend(userBan, message);
