@@ -24,7 +24,7 @@ public class Hashtag {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "hashtag", nullable = false, length = 256)
+    @Column(name = "hashtag", nullable = false, length = 32)
     private String hashtag;
 
     @Column(name = "post_id", nullable = false)
