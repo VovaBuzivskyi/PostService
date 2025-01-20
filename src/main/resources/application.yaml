@@ -29,12 +29,21 @@ spring:
       port: 6379
       host: localhost
       channel:
-        calculations_channel: calculations_channel
         album: album_channel
         user_ban: user_ban
         comment: comment_channel
-        calculations: calculations_channel
         files-uploaded: files_uploaded_channel
+
+  kafka:
+    bootstrap-servers: kafka:9092
+    consumer:
+      group-id: news-feed-group
+      auto-offset-reset: earliest
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    template:
+      default-topic: my-topic
 
 server:
   port: 8081
