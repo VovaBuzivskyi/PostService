@@ -5,11 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.config.async.ThreadPoolConfig;
 import faang.school.postservice.config.kafka.KafkaTopicConfig;
+import faang.school.postservice.dto.post.PostCacheDto;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
 import faang.school.postservice.event.post.PublishPostEvent;
 import faang.school.postservice.exception.EntityNotFoundException;
-import faang.school.postservice.exception.PostException;
 import faang.school.postservice.mapper.post.PostMapper;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
@@ -20,6 +20,7 @@ import faang.school.postservice.validator.post.PostValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -29,8 +30,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 
 @Slf4j
 @Service
@@ -46,9 +47,10 @@ public class PostService {
     private final ObjectMapper objectMapper;
     private final ThreadPoolConfig threadPoolConfig;
     private final HashtagService hashtagService;
-    private final KafkaTemplate<String,Object> kafkaTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final UserServiceClient userServiceClient;
     private final KafkaTopicConfig kafkaTopicConfig;
+    private final RedisCacheManager cacheManager;
 
     @Value("${post.unverified-posts-ban-count}")
     private Integer unverifiedPostsBanCount;
@@ -67,17 +69,6 @@ public class PostService {
         log.info("Post with id {} - created", createPost.getId());
         hashtagService.takeHashtags(createPost);
         return postMapper.toDto(createPost);
-    }
-
-    public PostDto publishPost(Long postId) {
-        Post post = getPost(postId);
-        if (post.isPublished()) {
-            throw new PostException("Forbidden republish post");
-        }
-        Post updatedPost = postRepository.save(setPublished(post));
-        kafkaTemplate.send(kafkaTopicConfig.postTopic().name(),createPostEvent(post));
-        log.info("Post with id {} - published", post.getId());
-        return postMapper.toDto(updatedPost);
     }
 
     @Transactional
@@ -189,34 +180,59 @@ public class PostService {
         }
     }
 
+    public PostDto publishPost(Long postId) {
+        Post post = getPost(postId);
+        postValidator.isPostPublished(post);
+        Post updatedPost = postRepository.save(setPublished(post));
+        savePostToCache(updatedPost);
+        sendEvent(updatedPost);
+        return postMapper.toDto(updatedPost);
+    }
+
     @Async("publishingPostsTaskExecutor")
     public void publishScheduledPosts() {
-        Executor executor = threadPoolConfig.publishingPostsTaskExecutor();
         List<Post> postsToPublish = postRepository.findReadyToPublish();
         List<List<Post>> subLists = divideListToSubLists(postsToPublish);
 
         log.info("Start publishing {} scheduled posts", postsToPublish.size());
         List<CompletableFuture<Void>> futures = subLists.stream()
                 .map(sublistOfPosts -> CompletableFuture.runAsync(() -> {
-                    sublistOfPosts.forEach(post -> {
-                        setPublished(post);
-                        kafkaTemplate.send(kafkaTopicConfig.postTopic().name(),createPostEvent(post));
-                        log.info("Post with id {} - published", post.getId());
-                    });
-                    postRepository.saveAll(sublistOfPosts);
+                    sublistOfPosts.forEach(this::setPublished);
 
-                    log.info("Published {} posts", sublistOfPosts.size());
-                }, executor))
+                    List<Post> savedPosts = postRepository.saveAll(sublistOfPosts);
+                    savedPosts.forEach(post -> {
+                        savePostToCache(post);
+                        sendEvent(post);
+                    });
+                }, threadPoolConfig.publishingPostsTaskExecutor()))
                 .toList();
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         log.info("Finished publishing {} scheduled posts", postsToPublish.size());
     }
 
+    private void savePostToCache(Post post) {
+        PostCacheDto postCacheDto = postMapper.toPostCacheDto(post);
+        Objects.requireNonNull(cacheManager.getCache("posts")).put(post.getId(), postCacheDto);
+    }
+
+    private void sendEvent(Post post) {
+        kafkaTemplate.send(kafkaTopicConfig.postTopic().name(), createPostEvent(post));
+        log.info("Post with id {} - published", post.getId());
+    }
+
     private Post setPublished(Post post) {
         post.setPublished(true);
         post.setPublishedAt(LocalDateTime.now());
         return post;
+    }
+
+    private PublishPostEvent createPostEvent(Post post) {
+        return PublishPostEvent.builder()
+                .postId(post.getId())
+                .followeeId(post.getAuthorId())
+                .followersIds(userServiceClient.getFollowersIds(post.getAuthorId()))
+                .build();
     }
 
     private <T> List<List<T>> divideListToSubLists(List<T> list) {
@@ -227,13 +243,5 @@ public class PostService {
             subLists.add(list.subList(i, Math.min(i + batchSize, totalSize)));
         }
         return subLists;
-    }
-
-    private PublishPostEvent createPostEvent(Post post){
-        return PublishPostEvent.builder()
-                .postId(post.getId())
-                .followeeId(post.getAuthorId())
-                .followersIds(userServiceClient.getFollowersIds(post.getAuthorId()))
-                .build();
     }
 }

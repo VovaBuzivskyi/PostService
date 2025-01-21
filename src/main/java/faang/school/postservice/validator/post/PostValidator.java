@@ -38,4 +38,9 @@ public class PostValidator {
         }
     }
 
+    public void isPostPublished(Post post) {
+        if (post.isPublished()) {
+            throw new PostException("Forbidden republish post");
+        }
+    }
 }

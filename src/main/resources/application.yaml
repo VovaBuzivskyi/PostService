@@ -33,6 +33,15 @@ spring:
         user_ban: user_ban
         comment: comment_channel
         files-uploaded: files_uploaded_channel
+    cache:
+      type: redis
+      global-minutes-ttl: 10
+      feeds-hours-ttl: 24
+      feeds-cache-name: feeds
+      posts-hours-ttl: 24
+      posts-cache-name: posts
+      users-hours-ttl: 24
+      users-cache-name: users
 
   kafka:
     bootstrap-servers: kafka:9092
@@ -48,11 +57,9 @@ spring:
       post-topic-name: post
       post-replications-count: 1
       post-partitions-count: 5
-
       like-topic-name: like
       like-replications-count: 1
       like-partitions-count: 5
-
       comment-topic-name: comment
       comment-replications-count: 1
       comment-partitions-count: 5
