@@ -1,12 +1,14 @@
-package faang.school.postservice.config.threads;
+package faang.school.postservice.config.async;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.concurrent.Executor;
+
 @Configuration
-public class FileUploadAsyncConfig {
+public class ThreadPoolConfig {
 
     @Value("${task-executor.file-upload.core-pool-size}")
     private int corePoolSize;
@@ -24,6 +26,16 @@ public class FileUploadAsyncConfig {
         executor.setMaxPoolSize(maxPoolSize);
         executor.setQueueCapacity(queueCapacity);
         executor.setThreadNamePrefix("FileUploadAsync-");
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean
+    public Executor publishingPostsTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(10);
+        executor.setThreadNamePrefix("publish-posts-");
         executor.initialize();
         return executor;
     }

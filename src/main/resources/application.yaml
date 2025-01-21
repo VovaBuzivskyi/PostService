@@ -41,9 +41,21 @@ spring:
       auto-offset-reset: earliest
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.JsonSerializer
     template:
-      default-topic: my-topic
+      default-topic: default-topic
+    topics:
+      post-topic-name: post
+      post-replications-count: 1
+      post-partitions-count: 5
+
+      like-topic-name: like
+      like-replications-count: 1
+      like-partitions-count: 5
+
+      comment-topic-name: comment
+      comment-replications-count: 1
+      comment-partitions-count: 5
 
 server:
   port: 8081

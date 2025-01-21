@@ -2,7 +2,7 @@ package faang.school.postservice.service.post;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import faang.school.postservice.config.thread_pool.ThreadPoolConfig;
+import faang.school.postservice.config.async.ThreadPoolConfig;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
 import faang.school.postservice.exception.EntityNotFoundException;
@@ -503,12 +503,12 @@ public class PostServiceTest {
         ArgumentCaptor<List<Post>> captor = ArgumentCaptor.forClass(List.class);
 
 
-        when(threadPoolConfig.threadPoolExecutorForPublishingPosts()).thenReturn(executor);
+        when(threadPoolConfig.publishingPostsTaskExecutor()).thenReturn(executor);
         when(postRepository.findReadyToPublish()).thenReturn(mockPosts);
 
         postService.publishScheduledPosts();
 
-        verify(threadPoolConfig, times(1)).threadPoolExecutorForPublishingPosts();
+        verify(threadPoolConfig, times(1)).publishingPostsTaskExecutor();
         verify(postRepository, times(1)).findReadyToPublish();
         verify(postRepository, times(2)).saveAll(captor.capture());
 

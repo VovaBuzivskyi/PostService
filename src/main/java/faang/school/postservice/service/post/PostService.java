@@ -2,9 +2,12 @@ package faang.school.postservice.service.post;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import faang.school.postservice.config.thread_pool.ThreadPoolConfig;
+import faang.school.postservice.client.UserServiceClient;
+import faang.school.postservice.config.async.ThreadPoolConfig;
+import faang.school.postservice.config.kafka.KafkaTopicConfig;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
+import faang.school.postservice.event.post.PublishPostEvent;
 import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.exception.PostException;
 import faang.school.postservice.mapper.post.PostMapper;
@@ -17,6 +20,7 @@ import faang.school.postservice.validator.post.PostValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +46,9 @@ public class PostService {
     private final ObjectMapper objectMapper;
     private final ThreadPoolConfig threadPoolConfig;
     private final HashtagService hashtagService;
+    private final KafkaTemplate<String,Object> kafkaTemplate;
+    private final UserServiceClient userServiceClient;
+    private final KafkaTopicConfig kafkaTopicConfig;
 
     @Value("${post.unverified-posts-ban-count}")
     private Integer unverifiedPostsBanCount;
@@ -67,8 +74,10 @@ public class PostService {
         if (post.isPublished()) {
             throw new PostException("Forbidden republish post");
         }
-        Post publishedPost = setPublished(post);
-        return postMapper.toDto(postRepository.save(publishedPost));
+        Post updatedPost = postRepository.save(setPublished(post));
+        kafkaTemplate.send(kafkaTopicConfig.postTopic().name(),createPostEvent(post));
+        log.info("Post with id {} - published", post.getId());
+        return postMapper.toDto(updatedPost);
     }
 
     @Transactional
@@ -180,20 +189,23 @@ public class PostService {
         }
     }
 
-    @Async("threadPoolExecutorForPublishingPosts")
+    @Async("publishingPostsTaskExecutor")
     public void publishScheduledPosts() {
-        Executor executor = threadPoolConfig.threadPoolExecutorForPublishingPosts();
+        Executor executor = threadPoolConfig.publishingPostsTaskExecutor();
         List<Post> postsToPublish = postRepository.findReadyToPublish();
         List<List<Post>> subLists = divideListToSubLists(postsToPublish);
 
         log.info("Start publishing {} scheduled posts", postsToPublish.size());
         List<CompletableFuture<Void>> futures = subLists.stream()
                 .map(sublistOfPosts -> CompletableFuture.runAsync(() -> {
-                    sublistOfPosts.forEach(this::setPublished);
+                    sublistOfPosts.forEach(post -> {
+                        setPublished(post);
+                        kafkaTemplate.send(kafkaTopicConfig.postTopic().name(),createPostEvent(post));
+                        log.info("Post with id {} - published", post.getId());
+                    });
                     postRepository.saveAll(sublistOfPosts);
 
-                    log.info("Published {} posts, by thread: {}", sublistOfPosts.size(),
-                            Thread.currentThread().getName());
+                    log.info("Published {} posts", sublistOfPosts.size());
                 }, executor))
                 .toList();
 
@@ -204,8 +216,6 @@ public class PostService {
     private Post setPublished(Post post) {
         post.setPublished(true);
         post.setPublishedAt(LocalDateTime.now());
-
-        log.info("Post with id {} - published", post.getId());
         return post;
     }
 
@@ -217,5 +227,13 @@ public class PostService {
             subLists.add(list.subList(i, Math.min(i + batchSize, totalSize)));
         }
         return subLists;
+    }
+
+    private PublishPostEvent createPostEvent(Post post){
+        return PublishPostEvent.builder()
+                .postId(post.getId())
+                .followeeId(post.getAuthorId())
+                .followersIds(userServiceClient.getFollowersIds(post.getAuthorId()))
+                .build();
     }
 }
