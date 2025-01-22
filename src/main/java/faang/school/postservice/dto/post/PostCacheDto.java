@@ -25,6 +25,7 @@ public class PostCacheDto {
     private long likesCount;
     private Set<CommentDto> comments = new LinkedHashSet<>();   // put by hands
     private long commentsCount;
+    private long profileViewsCount;
     private LocalDateTime publishedAt;
     private LocalDateTime updatedAt;
 }

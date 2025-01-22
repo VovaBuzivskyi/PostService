@@ -39,4 +39,22 @@ public class KafkaTopicConfig {
         return new NewTopic(topicProp.getCacheUserTopicName(), topicProp.getCacheUserPartitionsCount(),
                 topicProp.getCacheUserReplicationsCount());
     }
+
+    @Bean
+    public NewTopic commentTopic() {
+        return new NewTopic(topicProp.getCommentTopicName(), topicProp.getCommentPartitionsCount(),
+                topicProp.getCommentReplicationsCount());
+    }
+
+    @Bean
+    public NewTopic likeTopic() {
+        return new NewTopic(topicProp.getLikeTopicName(), topicProp.getLikePartitionsCount(),
+                topicProp.getLikeReplicationsCount());
+    }
+
+    @Bean
+    public NewTopic profileViewsTopic() {
+        return new NewTopic(topicProp.getPostViewsTopicName(), topicProp.getPostViewsPartitionsCount(),
+                topicProp.getPostViewsReplicationsCount());
+    }
 }

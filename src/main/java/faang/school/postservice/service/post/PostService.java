@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.config.async.ThreadPoolConfig;
-import faang.school.postservice.config.kafka.KafkaTopicConfig;
 import faang.school.postservice.dto.post.PostCacheDto;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
@@ -13,6 +12,9 @@ import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.mapper.post.PostMapper;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
+import faang.school.postservice.publisher.kafka.KafkaCacheUserProducer;
+import faang.school.postservice.publisher.kafka.KafkaCreatePostProducer;
+import faang.school.postservice.publisher.kafka.KafkaPostViewProducer;
 import faang.school.postservice.publisher.redis.impl.RedisMessagePublisher;
 import faang.school.postservice.repository.PostRepository;
 import faang.school.postservice.service.hashtag.HashtagService;
@@ -21,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.cache.RedisCacheManager;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,10 +48,11 @@ public class PostService {
     private final ObjectMapper objectMapper;
     private final ThreadPoolConfig poolConfig;
     private final HashtagService hashtagService;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final UserServiceClient userServiceClient;
-    private final KafkaTopicConfig kafkaTopicConfig;
     private final RedisCacheManager cacheManager;
+    private final KafkaPostViewProducer kafkaPostViewProducer;
+    private final KafkaCacheUserProducer kafkaCacheUserProducer;
+    private final KafkaCreatePostProducer kafkaCreatePostProducer;
 
     @Value("${post.unverified-posts-ban-count}")
     private Integer unverifiedPostsBanCount;
@@ -92,12 +94,6 @@ public class PostService {
 
         log.info("Post with id {} - deleted", deletePost.getId());
         postRepository.save(deletePost);
-    }
-
-    public PostDto getPostById(Long postId) {
-        Post post = getPost(postId);
-
-        return postMapper.toDto(post);
     }
 
     public List<PostDto> getAllNoPublishPostsByUserId(Long userId) {
@@ -184,13 +180,21 @@ public class PostService {
     }
 
     @Transactional
+    public PostDto getPostById(Long postId) {
+        Post post = getPost(postId);
+        kafkaPostViewProducer.send(post);
+        log.info("Post with id {} - got", postId);
+        return postMapper.toDto(post);
+    }
+
+    @Transactional
     public PostDto publishPost(Long postId) {
         Post post = getPost(postId);
         postValidator.isPostPublished(post);
         Post updatedPost = postRepository.save(setPublished(post));
         savePostToCache(updatedPost);
         sendPostCreatedEvent(updatedPost);
-        sendCacheUserEvent(updatedPost);
+        kafkaCacheUserProducer.send(updatedPost.getAuthorId());
         return postMapper.toDto(updatedPost);
     }
 
@@ -209,7 +213,7 @@ public class PostService {
                     savedPosts.forEach(post -> {
                         savePostToCache(post);
                         sendPostCreatedEvent(post);
-                        sendCacheUserEvent(post);
+                        kafkaCacheUserProducer.send(post.getAuthorId());
                     });
                 }, poolConfig.publishingPostsTaskExecutor()))
                 .toList();
@@ -224,20 +228,11 @@ public class PostService {
         log.info("Saving post with id {} to cache", post.getId());
     }
 
-    private void sendCacheUserEvent(Post post) {
-        kafkaTemplate.send(kafkaTopicConfig.cacheUserTopic().name(), post.getAuthorId());
-        log.info("Sent event to cache user with id:{}, for post with id {}", post.getAuthorId(), post.getId());
-    }
-
     private void sendPostCreatedEvent(Post post) {
         poolConfig.publishingPostsTaskExecutor().execute(() -> {
             List<Long> followersIds = userServiceClient.getFollowersIds(post.getAuthorId());
             List<List<Long>> subLists = divideListToSubLists(followersIds, eventBatchSize);
-            subLists.forEach(ids -> {
-                kafkaTemplate.send(kafkaTopicConfig.postTopic().name(), createPostEvent(post, followersIds));
-                log.info("Sent event Post created, for post with id {}", post.getId());
-            });
-
+            subLists.forEach(ids -> kafkaCreatePostProducer.send(createPostEvent(post, followersIds)));
         });
         log.info("Post with id {} - published", post.getId());
     }

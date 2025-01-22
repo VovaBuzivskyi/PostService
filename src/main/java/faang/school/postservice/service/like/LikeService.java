@@ -2,11 +2,13 @@ package faang.school.postservice.service.like;
 
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.dto.like.LikeDto;
+import faang.school.postservice.event.like.CacheLikeEvent;
 import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.mapper.like.LikeMapper;
 import faang.school.postservice.model.Comment;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
+import faang.school.postservice.publisher.kafka.KafkaAddLikeProducer;
 import faang.school.postservice.repository.LikeRepository;
 import faang.school.postservice.service.comment.CommentService;
 import faang.school.postservice.service.post.PostService;
@@ -30,6 +32,7 @@ public class LikeService {
     private final CommentService commentService;
     private final LikeValidator likeValidator;
     private final LikeMapper likeMapper;
+    private final KafkaAddLikeProducer kafkaAddLikeProducer;
 
     public void addLikeToPost(LikeDto likeDto) {
         validateUserExistence(likeDto.getUserId());
@@ -46,8 +49,11 @@ public class LikeService {
         likeToSave.setPost(postOfLike);
 
         log.info("Save new Like for Post with ID: {}", likeDto.getPostId());
-        likeRepository.save(likeToSave);
-        postService.addLikeToPost(likeDto.getPostId(), likeToSave);
+        Like savedLike = likeRepository.save(likeToSave);
+        postService.addLikeToPost(likeDto.getPostId(), savedLike);
+
+        sendCacheLikeEvent(savedLike);
+        //do I need add this user to cache ??
     }
 
     public void addLikeToComment(LikeDto likeDto) {
@@ -65,28 +71,39 @@ public class LikeService {
         likeToSave.setComment(commentOfLike);
 
         log.info("Save new Like for Comment with ID: {}", likeDto.getCommentId());
-        likeRepository.save(likeToSave);
+        Like saveLike = likeRepository.save(likeToSave);
         commentService.addLikeToComment(likeDto.getCommentId(), likeToSave);
+
+        sendCacheLikeEvent(saveLike);
+        // will it be possible to see who put like under Post or Comment ??? if yes then necessary cache user
     }
 
     public void removeLikeFromPost(Long likeId, LikeDto likeDto) {
-        validateUserExistence(likeDto.getUserId());
-        Like likeToRemove = getLike(likeId);
-        likeValidator.validateThisUserAddThisLike(likeDto.getUserId(), likeToRemove);
-
-        log.info("Remove like with ID: {} ", likeId);
-        likeRepository.delete(likeToRemove);
+        Like likeToRemove = removeLike(likeId, likeDto);
         postService.removeLikeFromPost(likeDto.getPostId(), likeToRemove);
     }
 
     public void removeLikeFromComment(Long likeId, LikeDto likeDto) {
+        Like likeToRemove = removeLike(likeId, likeDto);
+        commentService.removeLikeFromComment(likeDto.getCommentId(), likeToRemove);
+    }
+
+    private Like removeLike(Long likeId, LikeDto likeDto) {
         validateUserExistence(likeDto.getUserId());
         Like likeToRemove = getLike(likeId);
         likeValidator.validateThisUserAddThisLike(likeDto.getUserId(), likeToRemove);
-
-        log.info("Remove like with ID: {}", likeId);
         likeRepository.delete(likeToRemove);
-        commentService.removeLikeFromComment(likeDto.getCommentId(), likeToRemove);
+        log.info("Remove like with ID: {}", likeId);
+        return likeToRemove;
+    }
+
+    private void sendCacheLikeEvent(Like like) {
+        CacheLikeEvent cacheLikeEvent = CacheLikeEvent.builder()
+                .likeAuthorId(like.getUserId())
+                .likeId(like.getId())
+                .postId(like.getPost().getId())
+                .build();
+        kafkaAddLikeProducer.send(cacheLikeEvent);
     }
 
     private void validateUserExistence(long id) {

@@ -70,6 +70,9 @@ spring:
       comment-topic-name: comment
       comment-replications-count: 1
       comment-partitions-count: 3
+      post-views-topic-name: post
+      post-views-replications-count: 1
+      post-views-partitions-count: 3
     event-batch-size: 1000
 
 server:

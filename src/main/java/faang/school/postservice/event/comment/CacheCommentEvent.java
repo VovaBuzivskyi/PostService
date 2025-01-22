@@ -14,11 +14,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CacheCommentEvent {
-    private Long id;
-    private String content;
+    private Long commentId;
     private Long authorId;
-    private Long likesCount;
     private Long postId;
+    private String content;
+    private Long likesCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

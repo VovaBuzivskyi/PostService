@@ -26,4 +26,8 @@ public class KafkaTopicsProperties {
     private String cacheUserTopicName;
     private int cacheUserPartitionsCount;
     private short cacheUserReplicationsCount;
+
+    private String postViewsTopicName;
+    private int postViewsPartitionsCount;
+    private short postViewsReplicationsCount;
 }
