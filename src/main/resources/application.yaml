@@ -46,7 +46,7 @@ spring:
   kafka:
     bootstrap-servers: kafka:9092
     consumer:
-      group-id: news-feed-group
+      group-id: news-feed-post-service-group
       auto-offset-reset: earliest
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -54,15 +54,23 @@ spring:
     template:
       default-topic: default-topic
     topics:
+#      post:
+#        name: post
+#        replications_count: 1
+#        partitions-count: 3
       post-topic-name: post
       post-replications-count: 1
-      post-partitions-count: 5
+      post-partitions-count: 3
+      cache-user-topic-name: cache-user
+      cache-user-replications-count: 1
+      cache-user-partitions-count: 3
       like-topic-name: like
       like-replications-count: 1
-      like-partitions-count: 5
+      like-partitions-count: 3
       comment-topic-name: comment
       comment-replications-count: 1
-      comment-partitions-count: 5
+      comment-partitions-count: 3
+    event-batch-size: 1000
 
 server:
   port: 8081

@@ -23,4 +23,7 @@ public class KafkaTopicsProperties {
     private int commentPartitionsCount;
     private short commentReplicationsCount;
 
+    private String cacheUserTopicName;
+    private int cacheUserPartitionsCount;
+    private short cacheUserReplicationsCount;
 }

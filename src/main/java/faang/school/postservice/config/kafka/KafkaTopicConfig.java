@@ -33,4 +33,10 @@ public class KafkaTopicConfig {
         return new NewTopic(topicProp.getPostTopicName(), topicProp.getPostPartitionsCount(),
                 topicProp.getPostReplicationsCount());
     }
+
+    @Bean
+    public NewTopic cacheUserTopic() {
+        return new NewTopic(topicProp.getCacheUserTopicName(), topicProp.getCacheUserPartitionsCount(),
+                topicProp.getCacheUserReplicationsCount());
+    }
 }

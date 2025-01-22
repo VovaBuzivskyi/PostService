@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Setter
 @Component
 @ConfigurationProperties(prefix = "spring.data.cache")
-public class CacheTtlProperties {
+public class RedisCacheProperties {
 
     private int globalMinutesTtl;
     private int feedsHoursTtl;

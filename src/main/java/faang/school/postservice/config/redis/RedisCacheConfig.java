@@ -1,6 +1,6 @@
 package faang.school.postservice.config.redis;
 
-import faang.school.postservice.properties.CacheTtlProperties;
+import faang.school.postservice.properties.RedisCacheProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,7 +19,7 @@ import java.util.Map;
 public class RedisCacheConfig {
 
     private final JedisConnectionFactory jedisConnectionFactory;
-    private final CacheTtlProperties prop;
+    private final RedisCacheProperties prop;
 
     @Bean
     public RedisCacheManager cacheManager() {
@@ -31,7 +31,7 @@ public class RedisCacheConfig {
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
         cacheConfigurations.put(prop.getFeedsCacheName(), defaultConfig.entryTtl(Duration.ofHours(prop.getFeedsHoursTtl())));
         cacheConfigurations.put(prop.getPostsCacheName(), defaultConfig.entryTtl(Duration.ofHours(prop.getPostsHoursTtl())));
-        cacheConfigurations.put(prop.getUsersCacheName(), defaultConfig.entryTtl(Duration.ofHours(prop.getUsersHoursTtl())));
+//        cacheConfigurations.put(prop.getUsersCacheName(), defaultConfig.entryTtl(Duration.ofHours(prop.getUsersHoursTtl())));
 
         return RedisCacheManager.builder(jedisConnectionFactory)
                 .cacheDefaults(defaultConfig)

@@ -45,7 +45,7 @@ public class PostService {
     private final PostValidator postValidator;
     private final RedisMessagePublisher redisMessagePublisher;
     private final ObjectMapper objectMapper;
-    private final ThreadPoolConfig threadPoolConfig;
+    private final ThreadPoolConfig poolConfig;
     private final HashtagService hashtagService;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final UserServiceClient userServiceClient;
@@ -57,6 +57,9 @@ public class PostService {
 
     @Value("${post.publish-posts.batch-size}")
     private int batchSize;
+
+    @Value("${spring.kafka.event-batch-size}")
+    private int eventBatchSize;
 
     public PostDto createPost(PostRequestDto postRequestDtoDto) {
         postValidator.checkCreator(postRequestDtoDto);
@@ -180,19 +183,22 @@ public class PostService {
         }
     }
 
+    @Transactional
     public PostDto publishPost(Long postId) {
         Post post = getPost(postId);
         postValidator.isPostPublished(post);
         Post updatedPost = postRepository.save(setPublished(post));
         savePostToCache(updatedPost);
         sendEvent(updatedPost);
+        sendEventToCacheUser(updatedPost);
         return postMapper.toDto(updatedPost);
     }
 
+    @Transactional
     @Async("publishingPostsTaskExecutor")
     public void publishScheduledPosts() {
         List<Post> postsToPublish = postRepository.findReadyToPublish();
-        List<List<Post>> subLists = divideListToSubLists(postsToPublish);
+        List<List<Post>> subLists = divideListToSubLists(postsToPublish, batchSize);
 
         log.info("Start publishing {} scheduled posts", postsToPublish.size());
         List<CompletableFuture<Void>> futures = subLists.stream()
@@ -204,7 +210,7 @@ public class PostService {
                         savePostToCache(post);
                         sendEvent(post);
                     });
-                }, threadPoolConfig.publishingPostsTaskExecutor()))
+                }, poolConfig.publishingPostsTaskExecutor()))
                 .toList();
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
@@ -214,10 +220,24 @@ public class PostService {
     private void savePostToCache(Post post) {
         PostCacheDto postCacheDto = postMapper.toPostCacheDto(post);
         Objects.requireNonNull(cacheManager.getCache("posts")).put(post.getId(), postCacheDto);
+        log.info("Saving post with id {} to cache", post.getId());
+    }
+
+    private void sendEventToCacheUser(Post post) {
+        kafkaTemplate.send(kafkaTopicConfig.cacheUserTopic().name(), post.getAuthorId());
+        log.info("Sent event to cache user with id:{}, for post with id {}", post.getAuthorId(), post.getId());
     }
 
     private void sendEvent(Post post) {
-        kafkaTemplate.send(kafkaTopicConfig.postTopic().name(), createPostEvent(post));
+        poolConfig.publishingPostsTaskExecutor().execute(() -> {
+            List<Long> followersIds = userServiceClient.getFollowersIds(post.getAuthorId());
+            List<List<Long>> subLists = divideListToSubLists(followersIds, eventBatchSize);
+            subLists.forEach(ids -> {
+                kafkaTemplate.send(kafkaTopicConfig.postTopic().name(), createPostEvent(post, followersIds));
+                log.info("Sent event Post created, for post with id {}", post.getId());
+            });
+
+        });
         log.info("Post with id {} - published", post.getId());
     }
 
@@ -227,15 +247,15 @@ public class PostService {
         return post;
     }
 
-    private PublishPostEvent createPostEvent(Post post) {
+    private PublishPostEvent createPostEvent(Post post, List<Long> followersIds) {
         return PublishPostEvent.builder()
                 .postId(post.getId())
                 .followeeId(post.getAuthorId())
-                .followersIds(userServiceClient.getFollowersIds(post.getAuthorId()))
+                .followersIds(followersIds)
                 .build();
     }
 
-    private <T> List<List<T>> divideListToSubLists(List<T> list) {
+    private <T> List<List<T>> divideListToSubLists(List<T> list, int batchSize) {
         List<List<T>> subLists = new ArrayList<>();
         int totalSize = list.size();
 
