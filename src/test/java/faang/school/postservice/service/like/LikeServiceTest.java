@@ -114,7 +114,7 @@ class LikeServiceTest {
         when(likeRepository.findByCommentId(commentId)).thenReturn(new ArrayList<>());
         Like likeToCheckPost = new Like();
         when(likeRepository.findById(likeId)).thenReturn(Optional.of(likeToCheckPost));
-        when(commentService.getExistingComment(commentId)).thenReturn(commentOfLike);
+        when(commentService.getComment(commentId)).thenReturn(commentOfLike);
 
         likeService.addLikeToComment(likeDto);
 

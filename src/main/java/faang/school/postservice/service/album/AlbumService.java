@@ -17,7 +17,7 @@ import faang.school.postservice.mapper.AlbumMapper;
 import faang.school.postservice.model.Album;
 import faang.school.postservice.event.AlbumCreatedEvent;
 import faang.school.postservice.model.Post;
-import faang.school.postservice.redis.publisher.AlbumCreatedPublisher;
+import faang.school.postservice.publisher.redis.MessagePublisher;
 import faang.school.postservice.repository.AlbumRepository;
 import faang.school.postservice.service.post.PostService;
 import feign.FeignException;
@@ -45,7 +45,7 @@ public class AlbumService {
     private final AlbumMapper albumMapper;
     private final PostService postService;
     private final List<AlbumFilter> filters;
-    private final AlbumCreatedPublisher albumCreatedPublisher;
+    private final MessagePublisher.AlbumCreatedPublisher albumCreatedPublisher;
 
     @Transactional
     public AlbumDto createAlbum(AlbumCreateUpdateDto createDto) {

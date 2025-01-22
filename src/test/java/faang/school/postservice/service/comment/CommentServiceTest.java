@@ -8,7 +8,7 @@ import faang.school.postservice.mapper.CommentMapper;
 import faang.school.postservice.model.Comment;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
-import faang.school.postservice.publisher.CommentMessagePublisher;
+import faang.school.postservice.publisher.redis.impl.CommentMessagePublisher;
 import faang.school.postservice.repository.CommentRepository;
 import faang.school.postservice.service.post.PostService;
 import faang.school.postservice.validator.comment.CommentValidator;
@@ -184,14 +184,14 @@ public class CommentServiceTest {
         when(commentRepository.findById(id)).thenThrow(faang.school.postservice.exception.EntityNotFoundException.class);
 
         assertThrows(EntityNotFoundException.class,
-                () -> commentService.getExistingComment(id));
+                () -> commentService.getComment(id));
     }
 
     @Test
     public void getExistingCommentTest() {
         Long commentId = 1L;
         when(commentRepository.findById(commentId)).thenReturn(Optional.of(new Comment()));
-        commentService.getExistingComment(commentId);
+        commentService.getComment(commentId);
         verify(commentRepository, times(1)).findById(commentId);
     }
 

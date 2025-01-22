@@ -8,7 +8,7 @@ import faang.school.postservice.exception.FileProcessException;
 import faang.school.postservice.mapper.post_file.PostFileMapper;
 import faang.school.postservice.model.Post;
 import faang.school.postservice.model.Resource;
-import faang.school.postservice.publisher.PostFilesUploadedEventPublisher;
+import faang.school.postservice.publisher.redis.impl.PostFilesUploadedEventPublisher;
 import faang.school.postservice.service.amazonS3.AmazonS3Service;
 import faang.school.postservice.service.file.FileData;
 import faang.school.postservice.service.post.PostService;

@@ -1,5 +1,6 @@
-package faang.school.postservice.publisher;
+package faang.school.postservice.publisher.redis.impl;
 
+import faang.school.postservice.publisher.redis.MessagePublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;

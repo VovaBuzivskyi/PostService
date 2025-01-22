@@ -18,7 +18,7 @@ import faang.school.postservice.filter.album.AlbumTitleFilter;
 import faang.school.postservice.mapper.AlbumMapperImpl;
 import faang.school.postservice.model.Album;
 import faang.school.postservice.model.Post;
-import faang.school.postservice.redis.publisher.AlbumCreatedPublisher;
+import faang.school.postservice.publisher.redis.MessagePublisher;
 import faang.school.postservice.repository.AlbumRepository;
 import faang.school.postservice.service.post.PostService;
 import feign.FeignException;
@@ -60,7 +60,7 @@ class AlbumServiceTest {
     private AlbumRepository albumRepository;
 
     @Mock
-    private AlbumCreatedPublisher albumCreatedPublisher;
+    private MessagePublisher.AlbumCreatedPublisher albumCreatedPublisher;
 
     @Spy
     private AlbumMapperImpl albumMapper;

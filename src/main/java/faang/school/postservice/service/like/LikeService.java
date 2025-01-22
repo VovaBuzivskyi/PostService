@@ -60,7 +60,7 @@ public class LikeService {
         Like likeToCheckPost = getLikeOrEmptyLike(likeDto.getId());
         likeValidator.validateLikeWasNotPutToPost(likeDto, likeToCheckPost);
 
-        Comment commentOfLike = commentService.getExistingComment(likeDto.getCommentId());
+        Comment commentOfLike = commentService.getComment(likeDto.getCommentId());
         Like likeToSave = likeMapper.toEntity(likeDto);
         likeToSave.setComment(commentOfLike);
 

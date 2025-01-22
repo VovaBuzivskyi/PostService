@@ -1,8 +1,7 @@
 package faang.school.postservice.service.comment;
 
 import faang.school.postservice.dto.comment.CommentDto;
-import faang.school.postservice.redis.publisher.UserBanPublisher;
-import faang.school.postservice.publisher.RedisMessagePublisher;
+import faang.school.postservice.publisher.redis.MessagePublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,7 +17,7 @@ import java.util.stream.Collectors;
 public class CommenterBanner {
 
     private final CommentService commentService;
-    private final UserBanPublisher userBanPublisher;
+    private final MessagePublisher.UserBanPublisher userBanPublisher;
 
     @Scheduled(cron = "${cron.check-comments}")
     public void banCommenter() {
