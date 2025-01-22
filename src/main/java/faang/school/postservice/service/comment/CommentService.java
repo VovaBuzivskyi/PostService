@@ -48,6 +48,7 @@ public class CommentService {
 
         sendRedisCommentEvent(savedComment);
         sendKafkaCommentEvent(savedComment);
+        sentKafkaCacheUserEvent(savedComment);
         log.info("Created comment with id: {}", savedComment.getId());
         return commentMapper.toDto(savedComment);
     }
@@ -119,5 +120,11 @@ public class CommentService {
         CacheCommentEvent event = commentMapper.toCacheCommentEvent(comment);
         kafkaTemplate.send(kafkaProps.getCommentTopicName(), event);
         log.info("Event comment created with comment id: {} was sent", comment.getId());
+    }
+
+    private void sentKafkaCacheUserEvent(Comment comment) {
+        kafkaTemplate.send(kafkaProps.getCacheUserTopicName(), comment.getId());
+        log.info("Sent event to cache user with id:{}, for comment with id {}",
+                comment.getAuthorId(), comment.getId());
     }
 }

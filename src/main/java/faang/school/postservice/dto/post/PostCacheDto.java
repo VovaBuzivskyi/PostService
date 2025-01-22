@@ -8,8 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Setter
 @Getter
@@ -23,7 +23,7 @@ public class PostCacheDto {
     private Long authorId;
     private Long projectId;
     private long likesCount;
-    private List<CommentDto> comments = new LinkedList<>();   // put by hands
+    private Set<CommentDto> comments = new LinkedHashSet<>();   // put by hands
     private long commentsCount;
     private LocalDateTime publishedAt;
     private LocalDateTime updatedAt;

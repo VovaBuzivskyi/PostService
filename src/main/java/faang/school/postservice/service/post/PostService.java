@@ -189,8 +189,8 @@ public class PostService {
         postValidator.isPostPublished(post);
         Post updatedPost = postRepository.save(setPublished(post));
         savePostToCache(updatedPost);
-        sendEvent(updatedPost);
-        sendEventToCacheUser(updatedPost);
+        sendPostCreatedEvent(updatedPost);
+        sendCacheUserEvent(updatedPost);
         return postMapper.toDto(updatedPost);
     }
 
@@ -208,7 +208,8 @@ public class PostService {
                     List<Post> savedPosts = postRepository.saveAll(sublistOfPosts);
                     savedPosts.forEach(post -> {
                         savePostToCache(post);
-                        sendEvent(post);
+                        sendPostCreatedEvent(post);
+                        sendCacheUserEvent(post);
                     });
                 }, poolConfig.publishingPostsTaskExecutor()))
                 .toList();
@@ -223,12 +224,12 @@ public class PostService {
         log.info("Saving post with id {} to cache", post.getId());
     }
 
-    private void sendEventToCacheUser(Post post) {
+    private void sendCacheUserEvent(Post post) {
         kafkaTemplate.send(kafkaTopicConfig.cacheUserTopic().name(), post.getAuthorId());
         log.info("Sent event to cache user with id:{}, for post with id {}", post.getAuthorId(), post.getId());
     }
 
-    private void sendEvent(Post post) {
+    private void sendPostCreatedEvent(Post post) {
         poolConfig.publishingPostsTaskExecutor().execute(() -> {
             List<Long> followersIds = userServiceClient.getFollowersIds(post.getAuthorId());
             List<List<Long>> subLists = divideListToSubLists(followersIds, eventBatchSize);
