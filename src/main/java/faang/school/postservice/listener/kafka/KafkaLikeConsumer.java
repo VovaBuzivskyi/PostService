@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class KafkaLikeListener {
+public class KafkaLikeConsumer {
 
     private final PostService postService;
 

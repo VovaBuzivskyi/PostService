@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.config.async.ThreadPoolConfig;
-import faang.school.postservice.model.cache.PostCacheDto;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
 import faang.school.postservice.event.post.PublishPostEvent;
@@ -12,6 +11,7 @@ import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.mapper.post.PostMapper;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
+import faang.school.postservice.model.cache.PostCacheDto;
 import faang.school.postservice.properties.RedisCacheProperties;
 import faang.school.postservice.publisher.kafka.KafkaCacheUserProducer;
 import faang.school.postservice.publisher.kafka.KafkaCreatePostProducer;
@@ -36,6 +36,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 @Slf4j
 @Service
@@ -184,13 +185,14 @@ public class PostService {
         }
     }
 
-    @Transactional
-    public void addLikeToCachePost(Long postId) {
-        PostCacheDto postCache = postCacheRepository.getPostCache(postId);
-        postValidator.isPostCacheNull(postCache);
-        postCache.incrementLikesCount();
-        postCacheRepository.savePostCache(postCache);
-        log.info("Added like to postCache cache with postCache id {}", postId);
+    public void addPostViewToPostCache(long postId) {
+        updatePostCache(postId, PostCacheDto::incrementPostViewsCount);
+        log.info("Added postView to postCache, for post with id: {}", postId);
+    }
+
+    public void addLikeToCachePost(long postId) {
+        updatePostCache(postId, PostCacheDto::incrementLikesCount);
+        log.info("Added like to postCache, for post with id: {}", postId);
     }
 
     @Transactional
@@ -267,6 +269,15 @@ public class PostService {
                 .postDto(postMapper.toPostCacheDto(post))
                 .followersIds(followersIds)
                 .build();
+    }
+
+    private void updatePostCache(Long postId, Consumer<PostCacheDto> updater) {
+        PostCacheDto postCache = postCacheRepository.getPostCache(postId);
+        if (postCache == null) {
+            return;
+        }
+        updater.accept(postCache);
+        postCacheRepository.savePostCache(postCache);
     }
 
     private <T> List<List<T>> divideListToSubLists(List<T> list, int batchSize) {

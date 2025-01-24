@@ -6,7 +6,6 @@ import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
 import faang.school.postservice.exception.PostException;
 import faang.school.postservice.model.Post;
-import faang.school.postservice.model.cache.PostCacheDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -43,12 +42,5 @@ public class PostValidator {
         if (post.isPublished()) {
             throw new PostException("Forbidden republish post");
         }
-    }
-
-    public boolean isPostCacheNull(PostCacheDto dto) {
-        if (dto == null) {
-            return true;
-        }
-        return false;
     }
 }

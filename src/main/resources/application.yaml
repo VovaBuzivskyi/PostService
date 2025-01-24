@@ -47,9 +47,9 @@ spring:
     bootstrap-servers: kafka:9092
     listener:
       ack-mode: record
-#      concurrency: 3
+    #      concurrency: 3
     consumer:
-      group-id: news-feed-post-service-group
+      group-id: news-feed-group-1
       auto-offset-reset: earliest
       enable-auto-commit: false
     producer:

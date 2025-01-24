@@ -19,14 +19,13 @@ import java.util.Set;
 @NoArgsConstructor
 public class PostCacheDto implements Serializable {
 
+    @Builder.Default
+    private Set<CommentDto> comments = new LinkedHashSet<>();   // put by hands, max length = 3 + length get from props
     private Long postId;
     private String content;
     private Long authorId;
     private Long projectId;
     private long likesCount;
-
-    @Builder.Default
-    private Set<CommentDto> comments = new LinkedHashSet<>();   // put by hands, max length = 3 + length get from props
     private long commentsCount;
     private long postViewsCount;
     private LocalDateTime publishedAt;
@@ -34,5 +33,9 @@ public class PostCacheDto implements Serializable {
 
     public void incrementLikesCount() {
         likesCount++;
+    }
+
+    public void incrementPostViewsCount() {
+        postViewsCount++;
     }
 }
