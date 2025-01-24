@@ -47,7 +47,7 @@ spring:
     bootstrap-servers: kafka:9092
     listener:
       ack-mode: record
-      concurrency: 3
+#      concurrency: 3
     consumer:
       group-id: news-feed-post-service-group
       auto-offset-reset: earliest
@@ -55,13 +55,6 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.JsonSerializer
-      retries: 3
-#    retry:
-#      backoff:
-#        initial-interval: 1000
-#        max-interval: 5000
-#        multiplier: 2.0
-#        retries: 3
     template:
       default-topic: default-topic
     topics:
@@ -81,6 +74,12 @@ spring:
       post-views-replications-count: 1
       post-views-partitions-count: 3
     event-batch-size: 1000
+#    retry:
+#     backoff:
+#       initial-interval: 1000
+#       max-interval: 5000
+#       multiplier: 2.0
+#       retries: 3
 
 server:
   port: 8081

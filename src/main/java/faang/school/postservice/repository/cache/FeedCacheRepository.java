@@ -1,6 +1,6 @@
 package faang.school.postservice.repository.cache;
 
-import faang.school.postservice.dto.feed.FeedCacheDto;
+import faang.school.postservice.model.cache.FeedCacheDto;
 import faang.school.postservice.service.feed.NewsFeedService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package faang.school.postservice.dto.post;
+package faang.school.postservice.model.cache;
 
 import faang.school.postservice.dto.comment.CommentDto;
 import lombok.AllArgsConstructor;
@@ -19,14 +19,20 @@ import java.util.Set;
 @NoArgsConstructor
 public class PostCacheDto implements Serializable {
 
-    private Long id;
+    private Long postId;
     private String content;
     private Long authorId;
     private Long projectId;
     private long likesCount;
-    private Set<CommentDto> comments = new LinkedHashSet<>();   // put by hands, max length = 3 + get from props
+
+    @Builder.Default
+    private Set<CommentDto> comments = new LinkedHashSet<>();   // put by hands, max length = 3 + length get from props
     private long commentsCount;
     private long postViewsCount;
     private LocalDateTime publishedAt;
     private LocalDateTime updatedAt;
+
+    public void incrementLikesCount() {
+        likesCount++;
+    }
 }

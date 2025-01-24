@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.config.async.ThreadPoolConfig;
-import faang.school.postservice.dto.post.PostCacheDto;
+import faang.school.postservice.model.cache.PostCacheDto;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
 import faang.school.postservice.event.post.PublishPostEvent;
@@ -18,6 +18,7 @@ import faang.school.postservice.publisher.kafka.KafkaCreatePostProducer;
 import faang.school.postservice.publisher.kafka.KafkaPostViewProducer;
 import faang.school.postservice.publisher.redis.impl.RedisMessagePublisher;
 import faang.school.postservice.repository.PostRepository;
+import faang.school.postservice.repository.cache.PostCacheRepository;
 import faang.school.postservice.service.hashtag.HashtagService;
 import faang.school.postservice.validator.post.PostValidator;
 import lombok.RequiredArgsConstructor;
@@ -56,6 +57,7 @@ public class PostService {
     private final KafkaPostViewProducer kafkaPostViewProducer;
     private final KafkaCacheUserProducer kafkaCacheUserProducer;
     private final KafkaCreatePostProducer kafkaCreatePostProducer;
+    private final PostCacheRepository postCacheRepository;
 
     @Value("${post.unverified-posts-ban-count}")
     private Integer unverifiedPostsBanCount;
@@ -183,6 +185,15 @@ public class PostService {
     }
 
     @Transactional
+    public void addLikeToCachePost(Long postId) {
+        PostCacheDto postCache = postCacheRepository.getPostCache(postId);
+        postValidator.isPostCacheNull(postCache);
+        postCache.incrementLikesCount();
+        postCacheRepository.savePostCache(postCache);
+        log.info("Added like to postCache cache with postCache id {}", postId);
+    }
+
+    @Transactional
     public PostDto getPostById(Long postId) {
         Post post = getPost(postId);
         kafkaPostViewProducer.send(post);
@@ -225,7 +236,7 @@ public class PostService {
         log.info("Finished publishing {} scheduled posts", postsToPublish.size());
     }
 
-    public LinkedHashSet<Post> getNewestPosts(List<Long> followeesIds, int batchSize) {
+    public LinkedHashSet<Post> getBatchNewestPosts(List<Long> followeesIds, int batchSize) {
         List<Post> post = postRepository.findBatchNewestPostsForUserById(followeesIds, batchSize);
         return new LinkedHashSet<>(post);
     }

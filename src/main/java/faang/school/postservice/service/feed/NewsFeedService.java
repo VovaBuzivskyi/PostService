@@ -2,8 +2,8 @@ package faang.school.postservice.service.feed;
 
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.config.async.ThreadPoolConfig;
-import faang.school.postservice.dto.feed.FeedCacheDto;
-import faang.school.postservice.dto.post.PostCacheDto;
+import faang.school.postservice.model.cache.FeedCacheDto;
+import faang.school.postservice.model.cache.PostCacheDto;
 import faang.school.postservice.event.post.PublishPostEvent;
 import faang.school.postservice.mapper.post.PostMapper;
 import faang.school.postservice.model.Post;
@@ -38,7 +38,7 @@ public class NewsFeedService {
     public FeedCacheDto fillFeed(Long userId) {
         FeedCacheDto feedCacheDto = new FeedCacheDto();
         List<Long> usersIds = userServiceClient.getFolloweesIds(userId);
-        Set<Post> newestPosts = postService.getNewestPosts(usersIds, quantityPostsInFeed);
+        Set<Post> newestPosts = postService.getBatchNewestPosts(usersIds, quantityPostsInFeed);
         Set<PostCacheDto> postCacheDto = newestPosts.stream()
                 .map(postMapper::toPostCacheDto)
                 .collect(Collectors.toSet());
@@ -59,7 +59,7 @@ public class NewsFeedService {
                                 .forEach(posts::remove);
                     }
                     posts.add(postToCache);
-                    log.info("Added post with id: {} to feed cache with key: {}", postToCache.getId(), id);
+                    log.info("Added post with id: {} to feed cache with key: {}", postToCache.getPostId(), id);
                     feedCacheRepository.saveFeedCache(feedCacheDto);
                 }, poolConfig.newsFeedTaskExecutor()))
                 .toList();

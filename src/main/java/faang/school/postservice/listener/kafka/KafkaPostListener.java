@@ -20,7 +20,7 @@ public class KafkaPostListener {
         newsFeedService.addPostToFeeds(event)
                 .thenRun(ack::acknowledge)
                 .exceptionally(ex -> {
-                    log.error("Failed to process event for post ID: {}", event.getPostDto().getId(), ex);
+                    log.error("Failed to process event for post ID: {}", event.getPostDto().getPostId(), ex);
                     return null;
                 });
     }

@@ -1,6 +1,6 @@
 package faang.school.postservice.event.post;
 
-import faang.school.postservice.dto.post.PostCacheDto;
+import faang.school.postservice.model.cache.PostCacheDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

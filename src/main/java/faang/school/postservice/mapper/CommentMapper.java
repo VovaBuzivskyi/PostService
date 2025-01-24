@@ -6,6 +6,7 @@ import faang.school.postservice.model.Comment;
 import faang.school.postservice.model.Like;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
 
 import java.util.List;
@@ -20,6 +21,7 @@ public interface CommentMapper {
     @Mapping(source = "likes", target = "likesCount", qualifiedByName = "mapLikesCount")
     CacheCommentEvent toCacheCommentEvent(Comment comment);
 
+    @Named(value = "mapLikesCount")
     default long mapLikesCount(List<Like> likes) {
         return likes == null ? 0 : likes.size();
     }

@@ -1,6 +1,5 @@
-package faang.school.postservice.dto.feed;
+package faang.school.postservice.model.cache;
 
-import faang.school.postservice.dto.post.PostCacheDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,5 +18,7 @@ import java.util.Set;
 public class FeedCacheDto implements Serializable {
 
     private long userId;
+
+    @Builder.Default
     private Set<PostCacheDto> posts = new LinkedHashSet<>();
 }
