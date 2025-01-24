@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -16,16 +17,16 @@ import java.util.Set;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class PostCacheDto {
+public class PostCacheDto implements Serializable {
 
     private Long id;
     private String content;
     private Long authorId;
     private Long projectId;
     private long likesCount;
-    private Set<CommentDto> comments = new LinkedHashSet<>();   // put by hands
+    private Set<CommentDto> comments = new LinkedHashSet<>();   // put by hands, max length = 3 + get from props
     private long commentsCount;
-    private long profileViewsCount;
+    private long postViewsCount;
     private LocalDateTime publishedAt;
     private LocalDateTime updatedAt;
 }

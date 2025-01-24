@@ -27,4 +27,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT p.authorId FROM Post p WHERE p.verified = false GROUP BY p.authorId HAVING COUNT(p) > :banCount")
     List<Long> findAuthorsIdsToBan(@Param("banCount") int banCount);
 
+    @Query(value = """
+            SELECT * FROM post 
+            WHERE author_id IN :authorsIds 
+            AND deleted = false 
+            AND published = true 
+            ORDER BY published_at DESC 
+            LIMIT :batchSize
+            """, nativeQuery = true)
+    List<Post> findBatchNewestPostsForUserById(@Param("authorsIds") List<Long> authorsIds,
+                                               @Param("batchSize") int batchSize);
 }

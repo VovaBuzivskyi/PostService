@@ -9,7 +9,6 @@ import faang.school.postservice.model.Post;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
-import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
 
 import java.util.List;
@@ -27,17 +26,16 @@ public interface PostMapper {
 
     void updatePostFromDto(PostDto postDto, @MappingTarget Post post);
 
+    //postViewCount ignore!!
     //mapping Comment to commentDto ignore??
-    @Mapping(source = "comments", target = "commentsCount" ,qualifiedByName = "mapCommentsCount")
+    @Mapping(source = "comments", target = "commentsCount", qualifiedByName = "mapCommentsCount")
     @Mapping(source = "likes", target = "likesCount", qualifiedByName = "mapLikesCount")
     PostCacheDto toPostCacheDto(Post post);
 
-    @Named("mapLikesCount")
     default long mapLikesCount(List<Like> likes) {
         return likes == null ? 0 : likes.size();
     }
 
-    @Named("mapCommentsCount")
     default long mapCommentsCount(List<Comment> comments) {
         return comments == null ? 0 : comments.size();
     }

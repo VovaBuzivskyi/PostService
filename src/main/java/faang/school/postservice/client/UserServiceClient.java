@@ -21,6 +21,9 @@ public interface UserServiceClient {
     @GetMapping("/subscriptions/{followeeId}/followers/{followerId}")
     Boolean checkFollowerOfFollowee(@PathVariable Long followeeId, @PathVariable Long followerId);
 
-    @GetMapping("subscriptions/{followeeId}")
+    @GetMapping("/subscriptions/{followeeId}")
     List<Long> getFollowersIds(@PathVariable Long followeeId);
+
+    @GetMapping("/subscriptions/ids/{followerId}")
+    List<Long> getFolloweesIds(@PathVariable Long followerId);
 }

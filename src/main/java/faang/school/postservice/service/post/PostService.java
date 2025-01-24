@@ -12,6 +12,7 @@ import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.mapper.post.PostMapper;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
+import faang.school.postservice.properties.RedisCacheProperties;
 import faang.school.postservice.publisher.kafka.KafkaCacheUserProducer;
 import faang.school.postservice.publisher.kafka.KafkaCreatePostProducer;
 import faang.school.postservice.publisher.kafka.KafkaPostViewProducer;
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -48,6 +50,7 @@ public class PostService {
     private final ObjectMapper objectMapper;
     private final ThreadPoolConfig poolConfig;
     private final HashtagService hashtagService;
+    private final RedisCacheProperties cacheProp;
     private final UserServiceClient userServiceClient;
     private final RedisCacheManager cacheManager;
     private final KafkaPostViewProducer kafkaPostViewProducer;
@@ -61,7 +64,7 @@ public class PostService {
     private int batchSize;
 
     @Value("${spring.kafka.event-batch-size}")
-    private int eventBatchSize;
+    private int postEventBatchSize;
 
     public PostDto createPost(PostRequestDto postRequestDtoDto) {
         postValidator.checkCreator(postRequestDtoDto);
@@ -222,16 +225,21 @@ public class PostService {
         log.info("Finished publishing {} scheduled posts", postsToPublish.size());
     }
 
+    public LinkedHashSet<Post> getNewestPosts(List<Long> followeesIds, int batchSize) {
+        List<Post> post = postRepository.findBatchNewestPostsForUserById(followeesIds, batchSize);
+        return new LinkedHashSet<>(post);
+    }
+
     private void savePostToCache(Post post) {
         PostCacheDto postCacheDto = postMapper.toPostCacheDto(post);
-        Objects.requireNonNull(cacheManager.getCache("posts")).put(post.getId(), postCacheDto);
+        Objects.requireNonNull(cacheManager.getCache(cacheProp.getPostsCacheName())).put(post.getId(), postCacheDto);
         log.info("Saving post with id {} to cache", post.getId());
     }
 
     private void sendPostCreatedEvent(Post post) {
         poolConfig.publishingPostsTaskExecutor().execute(() -> {
             List<Long> followersIds = userServiceClient.getFollowersIds(post.getAuthorId());
-            List<List<Long>> subLists = divideListToSubLists(followersIds, eventBatchSize);
+            List<List<Long>> subLists = divideListToSubLists(followersIds, postEventBatchSize);
             subLists.forEach(ids -> kafkaCreatePostProducer.send(createPostEvent(post, followersIds)));
         });
         log.info("Post with id {} - published", post.getId());
@@ -245,8 +253,7 @@ public class PostService {
 
     private PublishPostEvent createPostEvent(Post post, List<Long> followersIds) {
         return PublishPostEvent.builder()
-                .postId(post.getId())
-                .followeeId(post.getAuthorId())
+                .postDto(postMapper.toPostCacheDto(post))
                 .followersIds(followersIds)
                 .build();
     }

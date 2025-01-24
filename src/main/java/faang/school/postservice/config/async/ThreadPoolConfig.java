@@ -30,8 +30,19 @@ public class ThreadPoolConfig {
         return executor;
     }
 
+    // take values from properties
     @Bean
     public Executor publishingPostsTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(5);
+        executor.setMaxPoolSize(10);
+        executor.setThreadNamePrefix("publish-posts-");
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean
+    public Executor newsFeedTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(5);
         executor.setMaxPoolSize(10);

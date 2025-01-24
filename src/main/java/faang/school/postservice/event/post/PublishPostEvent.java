@@ -1,5 +1,6 @@
 package faang.school.postservice.event.post;
 
+import faang.school.postservice.dto.post.PostCacheDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,7 +15,6 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class PublishPostEvent {
-    private long followeeId;
-    private long postId; // or better send PostDto ??
+    private PostCacheDto postDto;
     private List<Long> followersIds;
 }

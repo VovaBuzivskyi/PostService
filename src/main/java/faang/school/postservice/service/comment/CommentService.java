@@ -34,7 +34,7 @@ public class CommentService {
     private final CommentValidator commentValidator;
     private final PostService postService;
     private final CommentMessagePublisher commentMessagePublisher;
-    private final KafkaCreateCommentProducer createCommentProducer;
+    private final KafkaCreateCommentProducer kafkaCreateCommentProducer;
     private final KafkaCacheUserProducer kafkaCacheUserProducer;
 
     @Transactional
@@ -46,7 +46,7 @@ public class CommentService {
         Comment savedComment = commentRepository.save(commentToSave);
 
         sendRedisCommentEvent(savedComment);
-        createCommentProducer.send(commentMapper.toCacheCommentEvent(savedComment));
+        kafkaCreateCommentProducer.send(commentMapper.toCacheCommentEvent(savedComment));
         kafkaCacheUserProducer.send(savedComment.getAuthorId());
 
         log.info("Created comment with id: {}", savedComment.getId());

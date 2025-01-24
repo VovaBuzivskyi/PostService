@@ -17,6 +17,6 @@ public class KafkaCreatePostProducer {
 
     public void send(PublishPostEvent event) {
         kafkaTemplate.send(kafkaTopicConfig.postTopic().name(), event);
-        log.info("Sent event Post created, for post with id {}", event.getPostId());
+        log.info("Sent event Post created, for post with id {}", event.getPostDto().getAuthorId());
     }
 }

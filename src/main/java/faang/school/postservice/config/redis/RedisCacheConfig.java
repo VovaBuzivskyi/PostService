@@ -29,9 +29,12 @@ public class RedisCacheConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer))
                 .entryTtl(Duration.ofMinutes(prop.getGlobalMinutesTtl()));
         Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
-        cacheConfigurations.put(prop.getFeedsCacheName(), defaultConfig.entryTtl(Duration.ofHours(prop.getFeedsHoursTtl())));
-        cacheConfigurations.put(prop.getPostsCacheName(), defaultConfig.entryTtl(Duration.ofHours(prop.getPostsHoursTtl())));
-//        cacheConfigurations.put(prop.getUsersCacheName(), defaultConfig.entryTtl(Duration.ofHours(prop.getUsersHoursTtl())));
+        cacheConfigurations.put(prop.getFeedsCacheName(),
+                defaultConfig.entryTtl(Duration.ofHours(prop.getFeedsHoursTtl())));
+        cacheConfigurations.put(prop.getPostsCacheName(),
+                defaultConfig.entryTtl(Duration.ofHours(prop.getPostsHoursTtl())));
+//        cacheConfigurations.put(prop.getUsersCacheName(),
+//        defaultConfig.entryTtl(Duration.ofHours(prop.getUsersHoursTtl())));
 
         return RedisCacheManager.builder(jedisConnectionFactory)
                 .cacheDefaults(defaultConfig)
