@@ -88,7 +88,10 @@ server:
     max-http-header-size: 2097152
 
 feed:
-  quantity-posts-in-feed: 500
+  post:
+    quantity-posts-in-feed: 500
+  comment:
+    quantity-comments-in-post: 3
 
 cron:
   update-cache: "0/15 * * * * ?"

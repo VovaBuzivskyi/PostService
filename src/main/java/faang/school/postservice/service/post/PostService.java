@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.config.async.ThreadPoolConfig;
+import faang.school.postservice.dto.comment.CacheCommentDto;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
 import faang.school.postservice.event.post.PublishPostEvent;
@@ -35,6 +36,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -68,6 +70,9 @@ public class PostService {
 
     @Value("${spring.kafka.event-batch-size}")
     private int postEventBatchSize;
+
+    @Value(value = "${feed.comment.quantity-comments-in-post}")
+    int commentQuantityInPost;
 
     public PostDto createPost(PostRequestDto postRequestDtoDto) {
         postValidator.checkCreator(postRequestDtoDto);
@@ -195,6 +200,19 @@ public class PostService {
         log.info("Added like to postCache, for post with id: {}", postId);
     }
 
+    public void addCommentToPostCache(CacheCommentDto commentDto) {
+        PostCacheDto postCacheDto = postCacheRepository.getPostCache(commentDto.getPostId());
+        postCacheDto.incrementCommentsCount();
+        Set<CacheCommentDto> comments = postCacheDto.getComments();
+        if (comments.size() >= commentQuantityInPost) {
+            comments.stream().limit(1).forEach(comments::remove);
+        }
+        comments.add(commentDto);
+        postCacheRepository.savePostCache(postCacheDto);
+        log.info("Added comment with id: {} to postCache, for post with id: {}",
+                commentDto.getCommentId(), commentDto.getPostId());
+    }
+
     @Transactional
     public PostDto getPostById(Long postId) {
         Post post = getPost(postId);
@@ -239,7 +257,7 @@ public class PostService {
     }
 
     public LinkedHashSet<Post> getBatchNewestPosts(List<Long> followeesIds, int batchSize) {
-        List<Post> post = postRepository.findBatchNewestPostsForUserById(followeesIds, batchSize);
+        List<Post> post = postRepository.findBatchNewestPostsForUserByFolloweesIds(followeesIds, batchSize);
         return new LinkedHashSet<>(post);
     }
 

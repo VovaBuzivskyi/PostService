@@ -35,6 +35,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             ORDER BY published_at DESC 
             LIMIT :batchSize
             """, nativeQuery = true)
-    List<Post> findBatchNewestPostsForUserById(@Param("authorsIds") List<Long> authorsIds,
-                                               @Param("batchSize") int batchSize);
+    List<Post> findBatchNewestPostsForUserByFolloweesIds(@Param("authorsIds") List<Long> authorsIds,
+                                                         @Param("batchSize") int batchSize);
 }
