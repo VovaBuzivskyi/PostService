@@ -44,19 +44,19 @@ spring:
       users-cache-name: users
 
   kafka:
-    bootstrap-servers: kafka:9092
+    bootstrap-servers: localhost:9092
     listener:
       ack-mode: record
-    #      concurrency: 3
     consumer:
       group-id: news-feed-group-1
       auto-offset-reset: earliest
-      enable-auto-commit: false
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.JsonSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     template:
       default-topic: default-topic
+application:
+  kafka:
     topics:
       post-topic-name: post
       post-replications-count: 1
@@ -70,7 +70,7 @@ spring:
       comment-topic-name: comment
       comment-replications-count: 1
       comment-partitions-count: 3
-      post-views-topic-name: post
+      post-views-topic-name: post-views
       post-views-replications-count: 1
       post-views-partitions-count: 3
     event-batch-size: 1000
@@ -92,6 +92,8 @@ feed:
     quantity-posts-in-feed: 500
   comment:
     quantity-comments-in-post: 3
+  page:
+    size: 20
 
 cron:
   update-cache: "0/15 * * * * ?"

@@ -14,7 +14,7 @@ public class KafkaPostViewConsumer {
 
     private final PostService postService;
 
-    @KafkaListener(topics = "${spring.kafka.topics.post-views-topic-name}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${application.kafka.topics.post-views-topic-name}", groupId = "${spring.kafka.consumer.group-id}")
     public void listen(String event, Acknowledgment ack) {
         long postId = Long.parseLong(event);
         postService.addPostViewToPostCache(postId);

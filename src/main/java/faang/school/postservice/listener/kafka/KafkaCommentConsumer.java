@@ -15,7 +15,7 @@ public class KafkaCommentConsumer {
 
     private final PostService postService;
 
-    @KafkaListener(topics = "${spring.kafka.topics.comment-topic-name}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${application.kafka.topics.comment-topic-name}", groupId = "${spring.kafka.consumer.group-id}")
     public void listen(CacheCommentEvent event, Acknowledgment ack) {
         postService.addCommentToPostCache(event.getCommentDto());
         ack.acknowledge();

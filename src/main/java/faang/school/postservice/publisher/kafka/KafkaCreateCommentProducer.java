@@ -17,6 +17,7 @@ public class KafkaCreateCommentProducer {
 
     public void send(CacheCommentEvent event) {
         kafkaTemplate.send(kafkaTopicConfig.commentTopic().name(), event);
-        log.info("Event comment created was sent, with comment Id: {}", event.getCommentId());
+        log.info("Event comment created was sent, with comment Id: {}",
+                event.getCommentDto().getCommentId());
     }
 }

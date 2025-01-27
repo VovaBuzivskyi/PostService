@@ -1,8 +1,6 @@
 package faang.school.postservice.model.cache;
 
 import faang.school.postservice.dto.comment.CacheCommentDto;
-import faang.school.postservice.dto.comment.CommentDto;
-import faang.school.postservice.event.comment.CommentEventDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,7 +20,7 @@ import java.util.Set;
 public class PostCacheDto implements Serializable {
 
     @Builder.Default
-    private Set<CacheCommentDto> comments = new LinkedHashSet<>();   // put by hands, max length = 3 + length get from props
+    private Set<CacheCommentDto> comments = new LinkedHashSet<>();
     private Long postId;
     private String content;
     private Long authorId;

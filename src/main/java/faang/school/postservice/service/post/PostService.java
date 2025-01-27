@@ -39,6 +39,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -68,7 +69,7 @@ public class PostService {
     @Value("${post.publish-posts.batch-size}")
     private int batchSize;
 
-    @Value("${spring.kafka.event-batch-size}")
+    @Value("${application.kafka.event-batch-size}")
     private int postEventBatchSize;
 
     @Value(value = "${feed.comment.quantity-comments-in-post}")
@@ -190,6 +191,16 @@ public class PostService {
         }
     }
 
+    public void saveBatchPostsToCache(Set<PostCacheDto> posts) {
+        postCacheRepository.saveBatchPostsToCache(posts);
+        log.info("Save posts {} to cache", posts.size());
+    }
+
+    public void savePostToCache(PostCacheDto postCacheDto) {
+        postCacheRepository.savePostCache(postCacheDto);
+        log.info("Saving post with id: {} to post cache", postCacheDto.getPostId());
+    }
+
     public void addPostViewToPostCache(long postId) {
         updatePostCache(postId, PostCacheDto::incrementPostViewsCount);
         log.info("Added postView to postCache, for post with id: {}", postId);
@@ -233,7 +244,7 @@ public class PostService {
     }
 
     @Transactional
-    @Async("publishingPostsTaskExecutor")
+    @Async("postTaskExecutor")
     public void publishScheduledPosts() {
         List<Post> postsToPublish = postRepository.findReadyToPublish();
         List<List<Post>> subLists = divideListToSubLists(postsToPublish, batchSize);
@@ -249,16 +260,53 @@ public class PostService {
                         sendPostCreatedEvent(post);
                         kafkaCacheUserProducer.send(post.getAuthorId());
                     });
-                }, poolConfig.publishingPostsTaskExecutor()))
+                }, poolConfig.postTaskExecutor()))
                 .toList();
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         log.info("Finished publishing {} scheduled posts", postsToPublish.size());
     }
 
-    public LinkedHashSet<Post> getBatchNewestPosts(List<Long> followeesIds, int batchSize) {
+    @Transactional
+    public LinkedHashSet<PostCacheDto> getBatchNewestPosts(List<Long> followeesIds, int batchSize) {
         List<Post> post = postRepository.findBatchNewestPostsForUserByFolloweesIds(followeesIds, batchSize);
-        return new LinkedHashSet<>(post);
+        log.info("Start getting batch newest Posts: {}, from post repository", post.size());
+        return new LinkedHashSet<>(postMapper.toPostCacheDtoList(post));
+        // mapper doesn't set comments correctly // do this manually or correct mapper
+    }
+
+    @Transactional
+    public boolean isPostExists(Long postId) {
+        boolean isPostExists = postRepository.existsById(postId);
+        log.info(isPostExists ? "Post with id: {} exists" : "Post with id: {} does not exist", postId);
+        return isPostExists;
+    }
+
+    @Transactional
+    public LinkedHashSet<PostCacheDto> getBatchNewestPostsPublishedAfterParticularPost(
+            List<Long> followeesIds, long particularPostId, int batchSize) {
+        List<Post> posts = postRepository.findBatchOrderedPostsAfterParticularPostIdByFolloweesIds(
+                followeesIds, particularPostId, batchSize);
+        log.info("Start getting batch newest Posts: {}, after particular post with id: {} from post repository",
+                posts.size(), particularPostId);
+        return new LinkedHashSet<>(postMapper.toPostCacheDtoList(posts));
+        // mapper doesn't set comments correctly // do this manually or correct mapper
+    }
+
+    @Transactional
+    public LinkedHashSet<PostCacheDto> getBatchPostsFromCache(List<Long> postsIds) {
+        List<Long> missedPostsIdsInCache = new ArrayList<>();
+        Set<PostCacheDto> postsCaches = postCacheRepository.getBatchPostsCaches(postsIds, missedPostsIdsInCache);
+        if (!missedPostsIdsInCache.isEmpty()) {
+            List<Post> posts = postRepository.findAllById(missedPostsIdsInCache);
+            List<PostCacheDto> postCacheDtos = postMapper.toPostCacheDtoList(posts);
+            postsCaches.addAll(postCacheDtos);
+            return postsCaches.stream()
+                    .sorted(Comparator.comparing(PostCacheDto::getPublishedAt).reversed())
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+        }
+        log.info("Got batch postsCachesDtos : {}", postsCaches.size());
+        return new LinkedHashSet<>(postsCaches);
     }
 
     private void savePostToCache(Post post) {
@@ -268,7 +316,7 @@ public class PostService {
     }
 
     private void sendPostCreatedEvent(Post post) {
-        poolConfig.publishingPostsTaskExecutor().execute(() -> {
+        poolConfig.postTaskExecutor().execute(() -> {
             List<Long> followersIds = userServiceClient.getFollowersIds(post.getAuthorId());
             List<List<Long>> subLists = divideListToSubLists(followersIds, postEventBatchSize);
             subLists.forEach(ids -> kafkaCreatePostProducer.send(createPostEvent(post, followersIds)));

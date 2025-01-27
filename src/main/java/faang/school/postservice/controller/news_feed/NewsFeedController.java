@@ -1,6 +1,7 @@
 package faang.school.postservice.controller.news_feed;
 
 import faang.school.postservice.config.context.UserContext;
+import faang.school.postservice.dto.news_feed.NewsFeedResponseDto;
 import faang.school.postservice.service.feed.NewsFeedService;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -19,9 +20,10 @@ public class NewsFeedController {
     private final NewsFeedService newsFeedService;
     private final UserContext userContext;
 
-//    @GetMapping
-//    public NewsFeedDto getNewsFeedBatch(@RequestParam(value = "pageNumber", defaultValue = "0")
-//                                        @Min(value = 0, message = "Value should be positive") Long pageNumber) {
-//        return newsFeedService.getNewsFeedBatch(pageNumber, userContext.getUserId());
-//    }
+    @GetMapping
+    public NewsFeedResponseDto getNewsFeedBatch(@RequestParam(value = "lastViewedPostId", required = false)
+                                        @Min(value = 0, message = "Value should be positive")
+                                        Long lastViewedPostId) {
+        return newsFeedService.getNewsFeedBatch(lastViewedPostId, userContext.getUserId());
+    }
 }

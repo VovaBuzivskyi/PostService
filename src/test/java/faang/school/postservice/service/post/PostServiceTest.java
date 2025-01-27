@@ -503,12 +503,12 @@ public class PostServiceTest {
         ArgumentCaptor<List<Post>> captor = ArgumentCaptor.forClass(List.class);
 
 
-        when(threadPoolConfig.publishingPostsTaskExecutor()).thenReturn(executor);
+        when(threadPoolConfig.postTaskExecutor()).thenReturn(executor);
         when(postRepository.findReadyToPublish()).thenReturn(mockPosts);
 
         postService.publishScheduledPosts();
 
-        verify(threadPoolConfig, times(1)).publishingPostsTaskExecutor();
+        verify(threadPoolConfig, times(1)).postTaskExecutor();
         verify(postRepository, times(1)).findReadyToPublish();
         verify(postRepository, times(2)).saveAll(captor.capture());
 

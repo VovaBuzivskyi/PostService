@@ -32,7 +32,7 @@ public class ThreadPoolConfig {
 
     // take values from properties
     @Bean
-    public Executor publishingPostsTaskExecutor() {
+    public Executor postTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(5);
         executor.setMaxPoolSize(10);

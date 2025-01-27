@@ -2,6 +2,7 @@ package faang.school.postservice.listener.kafka;
 
 import faang.school.postservice.event.post.PublishPostEvent;
 import faang.school.postservice.service.feed.NewsFeedService;
+import faang.school.postservice.service.post.PostService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -14,9 +15,11 @@ import org.springframework.stereotype.Service;
 public class KafkaPostConsumer {
 
     private final NewsFeedService newsFeedService;
+    private final PostService postService;
 
-    @KafkaListener(topics = "${spring.kafka.topics.post-topic-name}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${application.kafka.topics.post-topic-name}", groupId = "${spring.kafka.consumer.group-id}")
     public void listen(PublishPostEvent event, Acknowledgment ack) {
+        postService.savePostToCache(event.getPostDto());
         newsFeedService.addPostToFeeds(event)
                 .thenRun(ack::acknowledge)
                 .exceptionally(ex -> {

@@ -1,11 +1,11 @@
 package faang.school.postservice.mapper.post;
 
-import faang.school.postservice.model.cache.PostCacheDto;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
 import faang.school.postservice.model.Comment;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
+import faang.school.postservice.model.cache.PostCacheDto;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -28,11 +28,15 @@ public interface PostMapper {
 
     void updatePostFromDto(PostDto postDto, @MappingTarget Post post);
 
-    //postViewCount ignore!!
-    //mapping Comment to commentDto ignore??
+    @Mapping(source = "comments", target = "comments", ignore = true)
     @Mapping(source = "comments", target = "commentsCount", qualifiedByName = "mapCommentsCount")
     @Mapping(source = "likes", target = "likesCount", qualifiedByName = "mapLikesCount")
     PostCacheDto toPostCacheDto(Post post);
+
+    @Mapping(source = "comments", target = "comments", ignore = true)
+    @Mapping(source = "comments", target = "commentsCount", qualifiedByName = "mapCommentsCount")
+    @Mapping(source = "likes", target = "likesCount", qualifiedByName = "mapLikesCount")
+    List<PostCacheDto> toPostCacheDtoList(List<Post> posts);
 
     @Named(value = "mapLikesCount")
     default long mapLikesCount(List<Like> likes) {

@@ -33,8 +33,8 @@ public class RedisCacheConfig {
                 defaultConfig.entryTtl(Duration.ofHours(prop.getFeedsHoursTtl())));
         cacheConfigurations.put(prop.getPostsCacheName(),
                 defaultConfig.entryTtl(Duration.ofHours(prop.getPostsHoursTtl())));
-//        cacheConfigurations.put(prop.getUsersCacheName(),
-//        defaultConfig.entryTtl(Duration.ofHours(prop.getUsersHoursTtl())));
+        cacheConfigurations.put(prop.getUsersCacheName(),
+                defaultConfig.entryTtl(Duration.ofHours(prop.getUsersHoursTtl())));
 
         return RedisCacheManager.builder(jedisConnectionFactory)
                 .cacheDefaults(defaultConfig)

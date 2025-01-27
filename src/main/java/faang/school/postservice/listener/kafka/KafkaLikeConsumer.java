@@ -14,7 +14,7 @@ public class KafkaLikeConsumer {
 
     private final PostService postService;
 
-    @KafkaListener(topics = "${spring.kafka.topics.like-topic-name}", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = "${application.kafka.topics.like-topic-name}", groupId = "${spring.kafka.consumer.group-id}")
     public void listen(String event, Acknowledgment ack) {
         long postId = Long.parseLong(event);
         postService.addLikeToCachePost(postId);
