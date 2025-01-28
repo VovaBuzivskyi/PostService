@@ -2,6 +2,7 @@ package faang.school.postservice.service.feed;
 
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.config.async.ThreadPoolConfig;
+import faang.school.postservice.dto.comment.CacheCommentDto;
 import faang.school.postservice.dto.news_feed.NewsFeedResponseDto;
 import faang.school.postservice.event.post.PublishPostEvent;
 import faang.school.postservice.model.cache.FeedCacheDto;
@@ -9,6 +10,7 @@ import faang.school.postservice.model.cache.PostCacheDto;
 import faang.school.postservice.model.cache.UserCacheDto;
 import faang.school.postservice.repository.cache.FeedCacheRepository;
 import faang.school.postservice.repository.cache.UserCacheRepository;
+import faang.school.postservice.service.comment.CommentService;
 import faang.school.postservice.service.post.PostService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +36,9 @@ public class NewsFeedService {
     @Value(value = "${feed.post.quantity-posts-in-feed}")
     private int quantityPostsInFeed;
 
+    @Value(value = "${feed.comment.quantity-comments-in-post}")
+    private int quantityCommentsInPost;
+
     @Value(value = "${feed.page.size}")
     private int pageSize;
 
@@ -42,6 +47,7 @@ public class NewsFeedService {
     private final FeedCacheRepository feedCacheRepository;
     private final ThreadPoolConfig poolConfig;
     private final UserCacheRepository userCacheRepository;
+    private final CommentService commentService;
 
     public FeedCacheDto fillFeed(Long userId, int batchSize) {
         log.info("Start filling cache for user with id: {}", userId);
@@ -57,7 +63,7 @@ public class NewsFeedService {
     private FeedCacheDto getFeed(long userId, int batchSize, Set<PostCacheDto> postsSaveToCache) {
         FeedCacheDto feedCacheDto = new FeedCacheDto();
         List<Long> followeesIds = userServiceClient.getFolloweesIds(userId);
-        Set<PostCacheDto> newestPosts = postService.getBatchNewestPosts(followeesIds, batchSize);
+        Set<PostCacheDto> newestPosts = getBatchNewestPosts(followeesIds, batchSize);
         Set<Long> postsIds = newestPosts.stream()
                 .peek(postsSaveToCache::add)
                 .map(PostCacheDto::getPostId)
@@ -129,7 +135,7 @@ public class NewsFeedService {
                 return newsFeedResponseDto;
             } else {
                 List<Long> followeesIds = userServiceClient.getFolloweesIds(userId);
-                posts = postService.getBatchNewestPostsPublishedAfterParticularPost(
+                posts = getBatchNewestPostsPublishedAfterParticularPost(
                         followeesIds, lastViewedPostId, pageSize);
                 List<UserCacheDto> postsAuthors = getPostsAuthors(posts);
 
@@ -160,7 +166,7 @@ public class NewsFeedService {
 
         if (numberToSkipAndRemaining.getValue() == null) {
             List<Long> followeesIds = userServiceClient.getFolloweesIds(userId);
-            sortedPosts = postService.getBatchNewestPostsPublishedAfterParticularPost(
+            sortedPosts = getBatchNewestPostsPublishedAfterParticularPost(
                     followeesIds, lastViewedPostId, pageSize);
 
             postsAuthors = getPostsAuthors(sortedPosts);
@@ -191,7 +197,7 @@ public class NewsFeedService {
                     .toList();
             List<Long> followeesIds = userServiceClient.getFolloweesIds(userId);
 
-            Set<PostCacheDto> postsFromRepository = postService.getBatchNewestPostsPublishedAfterParticularPost(
+            Set<PostCacheDto> postsFromRepository = getBatchNewestPostsPublishedAfterParticularPost(
                     followeesIds, lastViewedPostId, quantityToTakeFromRepository);
             Set<PostCacheDto> postsFromCache = postService.getBatchPostsFromCache(batchToBringFromCache);
             sortedPosts = Stream.concat(postsFromRepository.stream(), postsFromCache.stream())
@@ -205,6 +211,28 @@ public class NewsFeedService {
         }
 
         return newsFeedResponseDto;
+    }
+
+    private Set<PostCacheDto> getBatchNewestPostsPublishedAfterParticularPost(
+            List<Long> followeesIds, long particularPostId, int batchSize) {
+
+        LinkedHashSet<PostCacheDto> posts = postService.getBatchNewestPostsPublishedAfterParticularPost(
+                followeesIds, particularPostId, batchSize);
+        return addLatestCommentsToPosts(posts);
+    }
+
+    public Set<PostCacheDto> addLatestCommentsToPosts(Set<PostCacheDto> posts) {
+        return posts.stream()
+                .peek(postCacheDto -> {
+                    LinkedHashSet<CacheCommentDto> comments = commentService.
+                            getBatchNewestComments(postCacheDto.getPostId(), quantityCommentsInPost);
+                    postCacheDto.setComments(comments);
+                }).collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private Set<PostCacheDto> getBatchNewestPosts(List<Long> followeesIds, int batchSize) {
+        Set<PostCacheDto> posts = postService.getBatchNewestPosts(followeesIds, batchSize);
+        return addLatestCommentsToPosts(posts);
     }
 
     private Map.Entry<Integer, Integer> findNumberToSkipAndRemaining(Set<Long> postIds, long postIdToFind) {

@@ -1,5 +1,6 @@
 package faang.school.postservice.service.comment;
 
+import faang.school.postservice.dto.comment.CacheCommentDto;
 import faang.school.postservice.dto.comment.CommentDto;
 import faang.school.postservice.event.comment.CacheCommentEvent;
 import faang.school.postservice.event.comment.CommentEventDto;
@@ -20,8 +21,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -50,7 +54,7 @@ public class CommentService {
         kafkaCreateCommentProducer.send(CacheCommentEvent.builder()
                 .commentDto(commentMapper.toCacheCommentDto(savedComment))
                 .build());
-        kafkaCacheUserProducer.send(savedComment.getAuthorId());
+        kafkaCacheUserProducer.send(new ArrayList<>(List.of(savedComment.getAuthorId())));
 
         log.info("Created comment with id: {}", savedComment.getId());
         return commentMapper.toDto(savedComment);
@@ -107,6 +111,14 @@ public class CommentService {
                 () -> new EntityNotFoundException(COMMENT, commentId));
         log.info("Got comment with ID: {}", commentId);
         return comment;
+    }
+
+    public LinkedHashSet<CacheCommentDto> getBatchNewestComments(long postId, int batchSize) {
+        LinkedHashSet<Comment> comments =
+                new LinkedHashSet<>(commentRepository.findBatchNewestCommentsByPostId(postId, batchSize));
+        return comments.stream()
+                .map(commentMapper::toCacheCommentDto)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private void sendRedisCommentEvent(Comment comment) {

@@ -11,13 +11,13 @@ import java.util.List;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class KafkaCacheUserProducer {
+public class KafkaHeatCacheProducer {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final KafkaTopicConfig kafkaTopicConfig;
 
-    public void send(List<Long> usersIds) {
-        kafkaTemplate.send(kafkaTopicConfig.cacheUserTopic().name(), usersIds);
-        log.info("Sent event to cache {} users", usersIds.size());
+    public void send(List<Long> event) {
+        kafkaTemplate.send(kafkaTopicConfig.heatPostCacheTopic().name(), event);
+        log.info("Heat cache sent to topic: {}", kafkaTopicConfig.heatPostCacheTopic());
     }
 }

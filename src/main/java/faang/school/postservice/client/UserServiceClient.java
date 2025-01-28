@@ -19,14 +19,17 @@ public interface UserServiceClient {
     @PostMapping("/users/by-ids")
     List<UserDto> getUsersByIds(@RequestBody List<Long> ids);
 
-    @PostMapping("users/caches")
+    @PostMapping("users/caches/ids")
     List<UserCacheDto> getUsersCachesByIds(@RequestBody List<Long> usersIds);
 
     @GetMapping("users/active/{userId}")
     boolean isUserActive(@PathVariable Long userId);
 
-    @GetMapping("/exists/{userId}")
+    @GetMapping("users/exists/{userId}")
     boolean isUserExists(@PathVariable Long userId);
+
+    @PostMapping("users/caches")
+    String heatCache();
 
     @GetMapping("/subscriptions/{followeeId}/followers/{followerId}")
     Boolean checkFollowerOfFollowee(@PathVariable Long followeeId, @PathVariable Long followerId);

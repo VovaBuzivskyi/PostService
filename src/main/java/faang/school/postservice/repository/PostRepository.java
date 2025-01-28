@@ -28,32 +28,45 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<Long> findAuthorsIdsToBan(@Param("banCount") int banCount);
 
     @Query(value = """
-            SELECT * FROM post 
-            WHERE author_id IN :authorsIds 
-            AND deleted = false 
-            AND published = true 
-            ORDER BY published_at DESC 
+            SELECT * FROM post
+            WHERE author_id IN :authorsIds
+            AND deleted = false
+            AND published = true
+            ORDER BY published_at DESC
             LIMIT :batchSize
             """, nativeQuery = true)
     List<Post> findBatchNewestPostsForUserByFolloweesIds(@Param("authorsIds") List<Long> authorsIds,
                                                          @Param("batchSize") int batchSize);
 
     @Query(value = """
-            SELECT * FROM post 
-            WHERE author_id IN :authorsIds 
-              AND deleted = false 
-              AND published = true 
+            SELECT * FROM post
+            WHERE author_id IN :authorsIds
+              AND deleted = false
+              AND published = true
               AND published_at > (
-                  SELECT published_at 
-                  FROM post 
+                  SELECT published_at
+                  FROM post
                   WHERE id = :particularPostId
               )
-            ORDER BY published_at DESC 
+            ORDER BY published_at DESC
             LIMIT :batchSize
             """, nativeQuery = true)
-    List<Post> findBatchOrderedPostsAfterParticularPostIdByFolloweesIds(
+    List<Post> findBatchOrderedPostsAfterParticularPostIdInOrderByFolloweesIds(
             @Param("authorsIds") List<Long> authorsIds,
             @Param("particularPostId") long particularPostId,
             @Param("batchSize") int batchSize
     );
-    }
+
+    @Query(nativeQuery = true, value = """
+            SELECT id FROM post
+            WHERE published = true
+              AND deleted = false
+              AND published_at >= NOW() - INTERVAL :publishedDaysAgo DAY
+            ORDER BY published_at DESC
+            LIMIT :limit OFFSET :offset
+            """)
+        List<Long> findAllPublishedNotDeletedPostsIdsPublishedNotLaterDaysAgo(
+            @Param("publishedDaysAgo") long publishedDaysAgo,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+}

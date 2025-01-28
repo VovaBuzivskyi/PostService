@@ -61,25 +61,31 @@ application:
       post-topic-name: post
       post-replications-count: 1
       post-partitions-count: 3
+
       cache-user-topic-name: cache-user
       cache-user-replications-count: 1
       cache-user-partitions-count: 3
+
       like-topic-name: like
       like-replications-count: 1
       like-partitions-count: 3
+
       comment-topic-name: comment
       comment-replications-count: 1
       comment-partitions-count: 3
+
       post-views-topic-name: post-views
       post-views-replications-count: 1
       post-views-partitions-count: 3
+
+      heat-cache-topic-name: heat-posts-cache
+      heat-cache-replications-count: 1
+      heat-cache-partitions-count: 3
+
+      heat-feed-cache-topic-name: heat-feed-cache
+      heat-feed-cache-replications-count: 1
+      heat-feed-cache-partitions-count: 3
     event-batch-size: 1000
-#    retry:
-#     backoff:
-#       initial-interval: 1000
-#       max-interval: 5000
-#       multiplier: 2.0
-#       retries: 3
 
 server:
   port: 8081
@@ -94,6 +100,9 @@ feed:
     quantity-comments-in-post: 3
   page:
     size: 20
+  heater:
+    post-published-days-ago: 14
+    event-batch-size: 1000
 
 cron:
   update-cache: "0/15 * * * * ?"
@@ -171,3 +180,11 @@ task-executor:
     core-pool-size: 10
     max-pool-size: 20
     queue-capacity: 50
+  post-task:
+    core-pool-size: 10
+    max-pool-size: 20
+    queue-capacity: 50
+  news-feed-task:
+    core-pool-size: 50
+    max-pool-size: 100
+    queue-capacity: 200

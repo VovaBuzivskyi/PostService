@@ -239,7 +239,7 @@ public class PostService {
         Post updatedPost = postRepository.save(setPublished(post));
         savePostToCache(updatedPost);
         sendPostCreatedEvent(updatedPost);
-        kafkaCacheUserProducer.send(updatedPost.getAuthorId());
+        kafkaCacheUserProducer.send(new ArrayList<>(List.of(post.getAuthorId())));
         return postMapper.toDto(updatedPost);
     }
 
@@ -258,7 +258,7 @@ public class PostService {
                     savedPosts.forEach(post -> {
                         savePostToCache(post);
                         sendPostCreatedEvent(post);
-                        kafkaCacheUserProducer.send(post.getAuthorId());
+                        kafkaCacheUserProducer.send(new ArrayList<>(List.of(post.getAuthorId())));
                     });
                 }, poolConfig.postTaskExecutor()))
                 .toList();
@@ -272,7 +272,6 @@ public class PostService {
         List<Post> post = postRepository.findBatchNewestPostsForUserByFolloweesIds(followeesIds, batchSize);
         log.info("Start getting batch newest Posts: {}, from post repository", post.size());
         return new LinkedHashSet<>(postMapper.toPostCacheDtoList(post));
-        // mapper doesn't set comments correctly // do this manually or correct mapper
     }
 
     @Transactional
@@ -283,14 +282,29 @@ public class PostService {
     }
 
     @Transactional
+    public List<PostCacheDto> getPostCacheDtoList(List<Long> postsIds) {
+        List<Post> posts = postRepository.findAllById(postsIds);
+        log.info("Got {} posts from repository", posts.size());
+        return postMapper.toPostCacheDtoList(posts);
+    }
+
+    @Transactional
+    public List<Long> getAllPostsIdsPublishedNotLaterDaysAgo(long publishedDaysAgo, int limit, int offset) {
+        List<Long> postIds = postRepository.findAllPublishedNotDeletedPostsIdsPublishedNotLaterDaysAgo(
+                publishedDaysAgo, limit, offset);
+        log.info("Getting published not deleted posts ids: {}, published not later {} days ago",
+                postIds.size(), publishedDaysAgo);
+        return postIds;
+    }
+
+    @Transactional
     public LinkedHashSet<PostCacheDto> getBatchNewestPostsPublishedAfterParticularPost(
             List<Long> followeesIds, long particularPostId, int batchSize) {
-        List<Post> posts = postRepository.findBatchOrderedPostsAfterParticularPostIdByFolloweesIds(
+        List<Post> posts = postRepository.findBatchOrderedPostsAfterParticularPostIdInOrderByFolloweesIds(
                 followeesIds, particularPostId, batchSize);
         log.info("Start getting batch newest Posts: {}, after particular post with id: {} from post repository",
                 posts.size(), particularPostId);
         return new LinkedHashSet<>(postMapper.toPostCacheDtoList(posts));
-        // mapper doesn't set comments correctly // do this manually or correct mapper
     }
 
     @Transactional

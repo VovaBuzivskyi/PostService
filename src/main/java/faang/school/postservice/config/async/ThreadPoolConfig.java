@@ -1,6 +1,7 @@
 package faang.school.postservice.config.async;
 
-import org.springframework.beans.factory.annotation.Value;
+import faang.school.postservice.properties.ThreadPoolProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -8,34 +9,28 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.Executor;
 
 @Configuration
+@RequiredArgsConstructor
 public class ThreadPoolConfig {
 
-    @Value("${task-executor.file-upload.core-pool-size}")
-    private int corePoolSize;
-
-    @Value("${task-executor.file-upload.max-pool-size}")
-    private int maxPoolSize;
-
-    @Value("${task-executor.file-upload.queue-capacity}")
-    private int queueCapacity;
+    private final ThreadPoolProperties props;
 
     @Bean(name = "fileUploadTaskExecutor")
     public ThreadPoolTaskExecutor fileUploadTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(corePoolSize);
-        executor.setMaxPoolSize(maxPoolSize);
-        executor.setQueueCapacity(queueCapacity);
+        executor.setCorePoolSize(props.getFileUpload().getCorePoolSize());
+        executor.setMaxPoolSize(props.getFileUpload().getMaxPoolSize());
+        executor.setQueueCapacity(props.getFileUpload().getQueueCapacity());
         executor.setThreadNamePrefix("FileUploadAsync-");
         executor.initialize();
         return executor;
     }
 
-    // take values from properties
     @Bean
     public Executor postTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5);
-        executor.setMaxPoolSize(10);
+        executor.setCorePoolSize(props.getPostTask().getCorePoolSize());
+        executor.setMaxPoolSize(props.getPostTask().getMaxPoolSize());
+        executor.setQueueCapacity(props.getPostTask().getQueueCapacity());
         executor.setThreadNamePrefix("publish-posts-");
         executor.initialize();
         return executor;
@@ -44,8 +39,9 @@ public class ThreadPoolConfig {
     @Bean
     public Executor newsFeedTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(5);
-        executor.setMaxPoolSize(10);
+        executor.setCorePoolSize(props.getNewsFeedTask().getCorePoolSize());
+        executor.setMaxPoolSize(props.getNewsFeedTask().getMaxPoolSize());
+        executor.setQueueCapacity(props.getNewsFeedTask().getQueueCapacity());
         executor.setThreadNamePrefix("publish-posts-");
         executor.initialize();
         return executor;

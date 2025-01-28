@@ -57,4 +57,16 @@ public class KafkaTopicConfig {
         return new NewTopic(topicProp.getPostViewsTopicName(), topicProp.getPostViewsPartitionsCount(),
                 topicProp.getPostViewsReplicationsCount());
     }
+
+    @Bean
+    public NewTopic heatPostCacheTopic() {
+        return new NewTopic(topicProp.getHeatCacheTopicName(), topicProp.getHeatCachePartitionsCount(),
+                topicProp.getHeatCacheReplicationsCount());
+    }
+
+    @Bean
+    public NewTopic heatFeedCacheTopic() {
+        return new NewTopic(topicProp.getHeatFeedCacheTopicName(), topicProp.getHeatFeedCachePartitionsCount(),
+                topicProp.getHeatFeedCacheReplicationsCount());
+    }
 }
