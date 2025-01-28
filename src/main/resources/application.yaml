@@ -103,11 +103,15 @@ feed:
   heater:
     post-published-days-ago: 14
     event-batch-size: 1000
+  clean-cache:
+    clean-cache-batch: 5000
+    post-published-days-ago: 14
 
 cron:
   update-cache: "0/15 * * * * ?"
   check-comments: "0 0 0 * * ?"
   unverified-posts: 0 47 16 * * ?
+  clean-feed-cache: 0 0 0 * * ?
 
 logging:
   level:
