@@ -4,6 +4,8 @@ import faang.school.postservice.model.cache.PostCacheDto;
 import faang.school.postservice.properties.RedisCacheProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -27,6 +29,7 @@ public class PostCacheRepository {
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisCacheProperties prop;
+    private final RedissonClient redissonClient;
 
     @Cacheable(value = "#{redisCacheProperties.postsCacheName}", key = "#postId")
     public PostCacheDto getPostCache(long postId) {
@@ -36,7 +39,21 @@ public class PostCacheRepository {
 
     @CachePut(value = "#{redisCacheProperties.postsCacheName}", key = "#postCacheDto.postId")
     public PostCacheDto savePostCache(PostCacheDto postCacheDto) {
-        return postCacheDto;
+        String lockKey = "lock:post:" + postCacheDto.getPostId();
+        RLock lock = redissonClient.getLock(lockKey);
+        try {
+            if (lock.tryLock(10, 5, TimeUnit.SECONDS)) {
+                try {
+                    return postCacheDto;
+                } finally {
+                    lock.unlock();
+                }
+            } else {
+                throw new IllegalStateException("Failed to acquire lock");
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException("Error during awaiting locking", e);
+        }
     }
 
     @CacheEvict(value = "#{redisCacheProperties.postsCacheName}", key = "#postId")
@@ -47,13 +64,29 @@ public class PostCacheRepository {
         String cachePrefix = prop.getPostsCacheName() + "::";
         long ttlInSeconds = Duration.ofHours(prop.getPostsHoursTtl()).toSeconds();
 
-        redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
-            for (PostCacheDto post : posts) {
-                String key = cachePrefix + post.getPostId();
-                redisTemplate.opsForValue().set(key, post, ttlInSeconds, TimeUnit.SECONDS);
+        for (PostCacheDto post : posts) {
+            String lockKey = "lock:post:" + post.getPostId();
+            RLock lock = redissonClient.getLock(lockKey);
+
+            try {
+                if (lock.tryLock(10, 5, TimeUnit.SECONDS)) {
+                    try {
+                        redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+                            String key = cachePrefix + post.getPostId();
+                            redisTemplate.opsForValue().set(key, post, ttlInSeconds, TimeUnit.SECONDS);
+                            return null;
+                        });
+                    } finally {
+                        lock.unlock();
+                    }
+                } else {
+                    throw new IllegalStateException("Failed to acquire lock for post with id: " + post.getPostId());
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Error during awaiting locking for post with id: " + post.getPostId(), e);
             }
-            return null;
-        });
+        }
     }
 
     public Set<PostCacheDto> getBatchPostsCaches(List<Long> postsIds, List<Long> postsIdsMissedInCache) {
