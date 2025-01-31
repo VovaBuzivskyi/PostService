@@ -12,6 +12,7 @@ import faang.school.postservice.repository.cache.FeedCacheRepository;
 import faang.school.postservice.repository.cache.UserCacheRepository;
 import faang.school.postservice.service.comment.CommentService;
 import faang.school.postservice.service.post.PostService;
+import faang.school.postservice.validator.news_feed.NewsFeedValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,6 +49,7 @@ public class NewsFeedService {
     private final ThreadPoolConfig poolConfig;
     private final UserCacheRepository userCacheRepository;
     private final CommentService commentService;
+    private final NewsFeedValidator newsFeedValidator;
 
     public FeedCacheDto fillFeed(Long userId, int batchSize) {
         log.info("Start filling cache for user with id: {}", userId);
@@ -103,7 +105,7 @@ public class NewsFeedService {
                     postsIds.add(postToCache.getPostId());
                     feedCacheRepository.saveFeedCache(feedCacheDto);
                     postService.savePostToCache(postToCache);
-                    log.info("Added post with followerId: {} to feed cache with key: {}",
+                    log.info("Added post with Id: {} to feed cache with key: {}",
                             postToCache.getPostId(), followerId);
                 }, poolConfig.newsFeedTaskExecutor()))
                 .toList();
@@ -112,113 +114,40 @@ public class NewsFeedService {
     }
 
     public NewsFeedResponseDto getNewsFeedBatch(Long lastViewedPostId, long userId) {
-        NewsFeedResponseDto newsFeedResponseDto = new NewsFeedResponseDto();
+        newsFeedValidator.isUserExists(userId);
+        newsFeedValidator.isLastViewedPostExists(lastViewedPostId);
+        newsFeedValidator.isLastViewedPostShouldBeShownToUser(userId, lastViewedPostId);
         FeedCacheDto feed = feedCacheRepository.getFeedCacheByUserId(userId);
-        boolean isUserExists = userServiceClient.isUserExists(userId);
-
-        if (!isUserExists) {
-            throw new IllegalStateException("User with id: " + userId + " does not exist");
-        }
-        if (lastViewedPostId != null && !postService.isPostExists(lastViewedPostId)) {
-            throw new IllegalStateException("Last viewed post with id: %d, does not exist".formatted(lastViewedPostId));
-        }
 
         if (feed == null) {
-            Set<PostCacheDto> posts = new LinkedHashSet<>();
             if (lastViewedPostId == null) {
-                getFeed(userId, pageSize, posts);
-                newsFeedResponseDto.setPosts(posts);
-
-                List<UserCacheDto> postsAuthors = getPostsAuthors(posts);
-                newsFeedResponseDto.setPostsAuthors(postsAuthors);
-                poolConfig.postTaskExecutor().execute(() -> fillFeed(userId, quantityPostsInFeed));
-                return newsFeedResponseDto;
+                return getFeedFromRepositoryReturnFirstPage(userId);
             } else {
-                List<Long> followeesIds = userServiceClient.getFolloweesIds(userId);
-                posts = getBatchNewestPostsPublishedAfterParticularPost(
-                        followeesIds, lastViewedPostId, pageSize);
-                List<UserCacheDto> postsAuthors = getPostsAuthors(posts);
-
-                newsFeedResponseDto.setPostsAuthors(postsAuthors);
-                newsFeedResponseDto.setPosts(posts);
-                return newsFeedResponseDto;
+                return getFeedFromRepositoryReturnParticularPage(userId, lastViewedPostId);
             }
         }
 
-        Set<Long> postIds = feed.getPostsIds();
-        Set<PostCacheDto> sortedPosts;
-        List<UserCacheDto> postsAuthors;
-
         if (lastViewedPostId == null) {
-            List<Long> batchToBring = postIds.stream()
-                    .limit(pageSize)
-                    .toList();
-            sortedPosts = postService.getBatchPostsFromCache(batchToBring);
-
-            postsAuthors = getPostsAuthors(sortedPosts);
-            newsFeedResponseDto.setPosts(sortedPosts);
-            newsFeedResponseDto.setPostsAuthors(postsAuthors);
-            return newsFeedResponseDto;
+            return getNewsFeedFromCacheReturnFirstPage(feed);
         }
 
+        Set<Long> postsIds = feed.getPostsIds();
         Map.Entry<Integer, Integer> numberToSkipAndRemaining =
-                findNumberToSkipAndRemaining(postIds, lastViewedPostId);
+                findNumberToSkipAndRemaining(postsIds, lastViewedPostId);
 
         if (numberToSkipAndRemaining.getValue() == null) {
-            List<Long> followeesIds = userServiceClient.getFolloweesIds(userId);
-            sortedPosts = getBatchNewestPostsPublishedAfterParticularPost(
-                    followeesIds, lastViewedPostId, pageSize);
-
-            postsAuthors = getPostsAuthors(sortedPosts);
-            newsFeedResponseDto.setPosts(sortedPosts);
-            newsFeedResponseDto.setPostsAuthors(postsAuthors);
-            return newsFeedResponseDto;
+            return getFeedFromRepositoryReturnParticularPage(userId, lastViewedPostId);
         }
 
         if (numberToSkipAndRemaining.getValue() >= pageSize) {
-            List<Long> batchToBring = postIds.stream()
-                    .skip(numberToSkipAndRemaining.getKey())
-                    .limit(pageSize)
-                    .toList();
-            sortedPosts = postService.getBatchPostsFromCache(batchToBring);
-
-            postsAuthors = getPostsAuthors(sortedPosts);
-            newsFeedResponseDto.setPosts(sortedPosts);
-            newsFeedResponseDto.setPostsAuthors(postsAuthors);
-            return newsFeedResponseDto;
+            return getNewsFeedFromCacheReturnParticularPage(postsIds, numberToSkipAndRemaining.getKey());
         }
 
         if (numberToSkipAndRemaining.getValue() < pageSize) {
-            int quantityToTakeFromCache = postIds.size() - numberToSkipAndRemaining.getKey();
-            int quantityToTakeFromRepository = pageSize - quantityToTakeFromCache;
-            List<Long> batchToBringFromCache = postIds.stream()
-                    .skip(numberToSkipAndRemaining.getKey())
-                    .limit(quantityToTakeFromCache)
-                    .toList();
-            List<Long> followeesIds = userServiceClient.getFolloweesIds(userId);
-
-            Set<PostCacheDto> postsFromRepository = getBatchNewestPostsPublishedAfterParticularPost(
-                    followeesIds, lastViewedPostId, quantityToTakeFromRepository);
-            Set<PostCacheDto> postsFromCache = postService.getBatchPostsFromCache(batchToBringFromCache);
-            sortedPosts = Stream.concat(postsFromRepository.stream(), postsFromCache.stream())
-                    .sorted(Comparator.comparing(PostCacheDto::getPublishedAt).reversed())
-                    .collect(Collectors.toCollection(LinkedHashSet::new));
-
-            postsAuthors = getPostsAuthors(sortedPosts);
-            newsFeedResponseDto.setPosts(sortedPosts);
-            newsFeedResponseDto.setPostsAuthors(postsAuthors);
-            return newsFeedResponseDto;
+            return getPartOfFeedFromCacheAndLackPartFromRepository(
+                    postsIds, numberToSkipAndRemaining.getKey(), userId, lastViewedPostId);
         }
-
-        return newsFeedResponseDto;
-    }
-
-    private Set<PostCacheDto> getBatchNewestPostsPublishedAfterParticularPost(
-            List<Long> followeesIds, long particularPostId, int batchSize) {
-
-        LinkedHashSet<PostCacheDto> posts = postService.getBatchNewestPostsPublishedAfterParticularPost(
-                followeesIds, particularPostId, batchSize);
-        return addLatestCommentsToPosts(posts);
+        throw new InternalError("Error occurred during getting feed");
     }
 
     public Set<PostCacheDto> addLatestCommentsToPosts(Set<PostCacheDto> posts) {
@@ -228,6 +157,91 @@ public class NewsFeedService {
                             getBatchNewestComments(postCacheDto.getPostId(), quantityCommentsInPost);
                     postCacheDto.setComments(comments);
                 }).collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private NewsFeedResponseDto getFeedFromRepositoryReturnFirstPage(long userId) {
+        NewsFeedResponseDto newsFeedResponseDto = new NewsFeedResponseDto();
+        Set<PostCacheDto> posts = new LinkedHashSet<>();
+        getFeed(userId, pageSize, posts);
+        newsFeedResponseDto.setPosts(posts);
+
+        List<UserCacheDto> postsAuthors = getPostsAuthors(posts);
+        newsFeedResponseDto.setPostsAuthors(postsAuthors);
+        poolConfig.postTaskExecutor().execute(() -> fillFeed(userId, quantityPostsInFeed));
+        return newsFeedResponseDto;
+    }
+
+    private NewsFeedResponseDto getFeedFromRepositoryReturnParticularPage(Long userId, long lastViewedPostId) {
+        NewsFeedResponseDto newsFeedResponseDto = new NewsFeedResponseDto();
+        List<Long> followeesIds = userServiceClient.getFolloweesIds(userId);
+        Set<PostCacheDto> posts = getBatchNewestPostsPublishedAfterParticularPost(followeesIds, lastViewedPostId, pageSize);
+        List<UserCacheDto> postsAuthors = getPostsAuthors(posts);
+
+        newsFeedResponseDto.setPostsAuthors(postsAuthors);
+        newsFeedResponseDto.setPosts(posts);
+        poolConfig.postTaskExecutor().execute(() -> fillFeed(userId, quantityPostsInFeed));
+        return newsFeedResponseDto;
+    }
+
+    private NewsFeedResponseDto getNewsFeedFromCacheReturnFirstPage(FeedCacheDto feed) {
+        NewsFeedResponseDto newsFeedResponseDto = new NewsFeedResponseDto();
+        Set<Long> postIds = feed.getPostsIds();
+
+        List<Long> batchToBring = postIds.stream()
+                .limit(pageSize)
+                .toList();
+        Set<PostCacheDto> sortedPosts = postService.getBatchPostsFromCache(batchToBring);
+
+        List<UserCacheDto> postsAuthors = getPostsAuthors(sortedPosts);
+        newsFeedResponseDto.setPosts(sortedPosts);
+        newsFeedResponseDto.setPostsAuthors(postsAuthors);
+        return newsFeedResponseDto;
+    }
+
+    private NewsFeedResponseDto getNewsFeedFromCacheReturnParticularPage(Set<Long> postsIds, int postsToSkip) {
+        NewsFeedResponseDto newsFeedResponseDto = new NewsFeedResponseDto();
+        List<Long> batchToBring = postsIds.stream()
+                .skip(postsToSkip)
+                .limit(pageSize)
+                .toList();
+
+        Set<PostCacheDto> sortedPosts = postService.getBatchPostsFromCache(batchToBring);
+        List<UserCacheDto> postsAuthors = getPostsAuthors(sortedPosts);
+        newsFeedResponseDto.setPosts(sortedPosts);
+        newsFeedResponseDto.setPostsAuthors(postsAuthors);
+        return newsFeedResponseDto;
+    }
+
+    private NewsFeedResponseDto getPartOfFeedFromCacheAndLackPartFromRepository(
+            Set<Long> postsIds, int numbersToSkip, Long userId, Long lastViewedPostId) {
+        int quantityToTakeFromCache = postsIds.size() - numbersToSkip;
+        int quantityToTakeFromRepository = pageSize - quantityToTakeFromCache;
+        List<Long> batchToBringFromCache = postsIds.stream()
+                .skip(numbersToSkip)
+                .limit(quantityToTakeFromCache)
+                .toList();
+        List<Long> followeesIds = userServiceClient.getFolloweesIds(userId);
+
+        Set<PostCacheDto> postsFromRepository = getBatchNewestPostsPublishedAfterParticularPost(
+                followeesIds, lastViewedPostId, quantityToTakeFromRepository);
+        Set<PostCacheDto> postsFromCache = postService.getBatchPostsFromCache(batchToBringFromCache);
+        Set<PostCacheDto> sortedPosts = Stream.concat(postsFromRepository.stream(), postsFromCache.stream())
+                .sorted(Comparator.comparing(PostCacheDto::getPublishedAt).reversed())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<UserCacheDto> postsAuthors = getPostsAuthors(sortedPosts);
+        NewsFeedResponseDto newsFeedResponseDto = new NewsFeedResponseDto();
+        newsFeedResponseDto.setPosts(sortedPosts);
+        newsFeedResponseDto.setPostsAuthors(postsAuthors);
+        return newsFeedResponseDto;
+    }
+
+    private Set<PostCacheDto> getBatchNewestPostsPublishedAfterParticularPost(
+            List<Long> followeesIds, long particularPostId, int batchSize) {
+
+        LinkedHashSet<PostCacheDto> posts = postService.getBatchNewestPostsPublishedAfterParticularPost(
+                followeesIds, particularPostId, batchSize);
+        return addLatestCommentsToPosts(posts);
     }
 
     private Set<PostCacheDto> getBatchNewestPosts(List<Long> followeesIds, int batchSize) {

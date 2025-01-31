@@ -3,16 +3,15 @@ package faang.school.postservice.repository.cache;
 import faang.school.postservice.model.cache.UserCacheDto;
 import faang.school.postservice.properties.RedisCacheProperties;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collection;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -21,31 +20,46 @@ public class UserCacheRepository {
     private final RedisTemplate<String, Object> redisTemplate;
     private final RedisCacheProperties prop;
 
-    @Cacheable(value = "#{redisCacheProperties.usersCacheName}", key = "#userId")
     public UserCacheDto getCacheUserDto(long userId) {
-        return null;
+        String key = generateKey(userId);
+        Object cachedValue = redisTemplate.opsForValue().get(key);
+        return cachedValue != null ? (UserCacheDto) cachedValue : null;
     }
 
-    @CacheEvict(value = "#{redisCacheProperties.usersCacheName}", key = "#userId")
     public void deleteCacheUserDto(long userId) {
+        String key = generateKey(userId);
+        redisTemplate.delete(key);
     }
 
-    public List<UserCacheDto> getAllCachesUsersWithPagination(int limit, long offset) {
-        return Optional.ofNullable(redisTemplate.keys(prop.getUsersCacheName() + "*"))
-                .stream()
-                .flatMap(Collection::stream)
-                .skip(offset)
-                .limit(limit)
-                .map(key -> redisTemplate.opsForValue().get(key))
-                .filter(Objects::nonNull)
-                .map(user -> (UserCacheDto) user)
-                .collect(Collectors.toList());
+    public List<UserCacheDto> getAllCachesUsers(int size, long page) {
+        List<UserCacheDto> users = new ArrayList<>();
+        long currentIndex = 0;
+
+        try (Cursor<Map.Entry<Object, Object>> cursor = redisTemplate.opsForHash()
+                .scan(prop.getUsersCacheName(), ScanOptions.scanOptions().count(size).build())) {
+
+            while (cursor.hasNext()) {
+                Map.Entry<Object, Object> entry = cursor.next();
+
+                if (currentIndex++ < page) {
+                    continue;
+                }
+
+                users.add((UserCacheDto) entry.getValue());
+                if (users.size() >= size) {
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch users from cache", e);
+        }
+        return users;
     }
 
     public List<UserCacheDto> getBatchCacheUserDto(List<Long> userIds, List<Long> usersIdsMissedInCache) {
         List<String> keys = userIds.stream()
-                .map(userId -> prop.getUsersCacheName() + "::" + userId)
-                .collect(Collectors.toList());
+                .map(this::generateKey)
+                .toList();
 
         List<Object> cachedUsers = redisTemplate.opsForValue().multiGet(keys);
 
@@ -58,6 +72,10 @@ public class UserCacheRepository {
         return cachedUsers.stream()
                 .filter(Objects::nonNull)
                 .map(user -> (UserCacheDto) user)
-                .collect(Collectors.toList());
+                .toList();
+    }
+
+    private String generateKey(long userId) {
+        return prop.getUsersCacheName() + userId;
     }
 }

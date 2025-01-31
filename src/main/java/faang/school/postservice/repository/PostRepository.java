@@ -65,8 +65,18 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             ORDER BY published_at DESC
             LIMIT :limit OFFSET :offset
             """)
-        List<Long> findAllPublishedNotDeletedPostsIdsPublishedNotLaterDaysAgo(
+    List<Long> findAllPublishedNotDeletedPostsIdsPublishedNotLaterDaysAgo(
             @Param("publishedDaysAgo") long publishedDaysAgo,
             @Param("limit") int limit,
             @Param("offset") int offset);
+
+    @Query(nativeQuery = true, value = """
+            SELECT EXISTS(
+                SELECT 1
+                FROM post
+                WHERE id = :postId
+                    AND author_id IN (:followeesIds)
+                )
+            """)
+    boolean isPostBelongUserFollowees(@Param("followeesIds") List<Long> followeesIds, @Param("postId") long postId);
 }

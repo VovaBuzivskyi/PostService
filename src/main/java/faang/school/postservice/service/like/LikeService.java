@@ -48,12 +48,11 @@ public class LikeService {
         Like likeToSave = likeMapper.toEntity(likeDto);
         likeToSave.setPost(postOfLike);
 
-        log.info("Save new Like for Post with ID: {}", likeDto.getPostId());
         Like savedLike = likeRepository.save(likeToSave);
         postService.addLikeToPost(likeDto.getPostId(), savedLike);
 
         sendCacheLikeEvent(savedLike);
-        //do I need add this user to cache ??
+        log.info("Save new Like for Post with ID: {}", likeDto.getPostId());
     }
 
     public void addLikeToComment(LikeDto likeDto) {
@@ -70,12 +69,11 @@ public class LikeService {
         Like likeToSave = likeMapper.toEntity(likeDto);
         likeToSave.setComment(commentOfLike);
 
-        log.info("Save new Like for Comment with ID: {}", likeDto.getCommentId());
         Like saveLike = likeRepository.save(likeToSave);
         commentService.addLikeToComment(likeDto.getCommentId(), likeToSave);
 
         sendCacheLikeEvent(saveLike);
-        // will it be possible to see who put like under Post or Comment ??? if yes then necessary cache user
+        log.info("Save new Like for Comment with ID: {}", likeDto.getCommentId());
     }
 
     public void removeLikeFromPost(Long likeId, LikeDto likeDto) {

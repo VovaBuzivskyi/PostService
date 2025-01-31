@@ -20,17 +20,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class NewsFeedController {
 
     private final NewsFeedService newsFeedService;
-    private final UserContext userContext;
     private final FeedHeater feedHeater;
 
     @GetMapping
     public NewsFeedResponseDto getNewsFeedBatch(@RequestParam(value = "lastViewedPostId", required = false)
                                                 @Min(value = 0, message = "Value should be positive")
                                                 Long lastViewedPostId) {
-        return newsFeedService.getNewsFeedBatch(lastViewedPostId, userContext.getUserId());
+        return newsFeedService.getNewsFeedBatch(lastViewedPostId, UserContext.getUserId());
     }
 
-    @PostMapping("/heat")
+    @PostMapping("/cache/heat")
     public String heatCache() {
         feedHeater.startHeatFeedCache();
         return "Cache heating started successfully.";

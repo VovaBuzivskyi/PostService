@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.config.async.ThreadPoolConfig;
+import faang.school.postservice.config.context.UserContext;
 import faang.school.postservice.dto.comment.CacheCommentDto;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
@@ -15,8 +16,8 @@ import faang.school.postservice.model.Post;
 import faang.school.postservice.model.cache.PostCacheDto;
 import faang.school.postservice.properties.RedisCacheProperties;
 import faang.school.postservice.publisher.kafka.KafkaCacheUserProducer;
-import faang.school.postservice.publisher.kafka.KafkaCreatePostProducer;
 import faang.school.postservice.publisher.kafka.KafkaPostViewProducer;
+import faang.school.postservice.publisher.kafka.KafkaPublishPostProducer;
 import faang.school.postservice.publisher.redis.impl.RedisMessagePublisher;
 import faang.school.postservice.repository.PostRepository;
 import faang.school.postservice.repository.cache.PostCacheRepository;
@@ -60,7 +61,7 @@ public class PostService {
     private final RedisCacheManager cacheManager;
     private final KafkaPostViewProducer kafkaPostViewProducer;
     private final KafkaCacheUserProducer kafkaCacheUserProducer;
-    private final KafkaCreatePostProducer kafkaCreatePostProducer;
+    private final KafkaPublishPostProducer kafkaPublishPostProducer;
     private final PostCacheRepository postCacheRepository;
 
     @Value("${post.unverified-posts-ban-count}")
@@ -167,7 +168,6 @@ public class PostService {
     public Post getPost(Long postId) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new EntityNotFoundException(POST, postId));
-
         log.info("Get post with id {}", postId);
         return post;
     }
@@ -189,6 +189,13 @@ public class PostService {
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to serialize author ID to JSON", e);
         }
+    }
+
+    public boolean isPostBelongUserFollowees(List<Long> foolloweesIds, Long postId) {
+        boolean isPostBelong = postRepository.isPostBelongUserFollowees(foolloweesIds, postId);
+        log.info(isPostBelong ? "Post with id: %d belong user's followees".formatted(postId) :
+                "Post with id: %d doesn't belong user's followees".formatted(postId));
+        return isPostBelong;
     }
 
     public void saveBatchPostsToCache(Set<PostCacheDto> posts) {
@@ -238,7 +245,7 @@ public class PostService {
         postValidator.isPostPublished(post);
         Post updatedPost = postRepository.save(setPublished(post));
         savePostToCache(updatedPost);
-        sendPostCreatedEvent(updatedPost);
+        sendPostPublishedEvent(updatedPost);
         kafkaCacheUserProducer.send(new ArrayList<>(List.of(post.getAuthorId())));
         return postMapper.toDto(updatedPost);
     }
@@ -257,7 +264,7 @@ public class PostService {
                     List<Post> savedPosts = postRepository.saveAll(sublistOfPosts);
                     savedPosts.forEach(post -> {
                         savePostToCache(post);
-                        sendPostCreatedEvent(post);
+                        sendPostPublishedEvent(post);
                         kafkaCacheUserProducer.send(new ArrayList<>(List.of(post.getAuthorId())));
                     });
                 }, poolConfig.postTaskExecutor()))
@@ -313,8 +320,8 @@ public class PostService {
         Set<PostCacheDto> postsCaches = postCacheRepository.getBatchPostsCaches(postsIds, missedPostsIdsInCache);
         if (!missedPostsIdsInCache.isEmpty()) {
             List<Post> posts = postRepository.findAllById(missedPostsIdsInCache);
-            List<PostCacheDto> postCacheDtos = postMapper.toPostCacheDtoList(posts);
-            postsCaches.addAll(postCacheDtos);
+            List<PostCacheDto> postCachesFromRepository = postMapper.toPostCacheDtoList(posts);
+            postsCaches.addAll(postCachesFromRepository);
             return postsCaches.stream()
                     .sorted(Comparator.comparing(PostCacheDto::getPublishedAt).reversed())
                     .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -329,11 +336,13 @@ public class PostService {
         log.info("Saving post with id {} to cache", post.getId());
     }
 
-    private void sendPostCreatedEvent(Post post) {
+    private void sendPostPublishedEvent(Post post) {
+        Long userId = UserContext.getUserId();
         poolConfig.postTaskExecutor().execute(() -> {
+            UserContext.setUserId(userId);
             List<Long> followersIds = userServiceClient.getFollowersIds(post.getAuthorId());
             List<List<Long>> subLists = divideListToSubLists(followersIds, postEventBatchSize);
-            subLists.forEach(ids -> kafkaCreatePostProducer.send(createPostEvent(post, followersIds)));
+            subLists.forEach(ids -> kafkaPublishPostProducer.send(createPostEvent(post, followersIds)));
         });
         log.info("Post with id {} - published", post.getId());
     }

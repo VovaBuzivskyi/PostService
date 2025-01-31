@@ -17,3 +17,5 @@ databaseChangeLog:
       file: db/changelog/changeset/post_V008_createHashtag.sql
   - include:
       file: db/changelog/changeset/post_V009_addPostViewsCounter.sql
+  - include:
+      file: db/changelog/changeset/post_V010__add_post_comment_indexes.sql
