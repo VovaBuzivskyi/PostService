@@ -1,7 +1,6 @@
 package faang.school.postservice.publisher.kafka;
 
 import faang.school.postservice.config.kafka.KafkaTopicConfig;
-import faang.school.postservice.event.like.CacheLikeEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -15,8 +14,8 @@ public class KafkaAddLikeProducer {
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final KafkaTopicConfig kafkaTopicConfig;
 
-    public void send(CacheLikeEvent event) {
-        kafkaTemplate.send(kafkaTopicConfig.likeTopic().name(),event);
-        log.info("Event add like was sent successfully for like with id: {}",event.getLikeId());
+    public void send(String event) {
+        kafkaTemplate.send(kafkaTopicConfig.likeTopic().name(), event);
+        log.info("Event add like was sent successfully for post with id: {}", event);
     }
 }

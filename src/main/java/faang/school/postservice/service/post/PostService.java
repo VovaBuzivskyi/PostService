@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.config.async.ThreadPoolConfig;
 import faang.school.postservice.config.context.UserContext;
-import faang.school.postservice.dto.comment.CacheCommentDto;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
 import faang.school.postservice.event.post.PublishPostEvent;
@@ -14,19 +13,18 @@ import faang.school.postservice.mapper.post.PostMapper;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
 import faang.school.postservice.model.cache.PostCacheDto;
-import faang.school.postservice.properties.RedisCacheProperties;
 import faang.school.postservice.publisher.kafka.KafkaCacheUserProducer;
 import faang.school.postservice.publisher.kafka.KafkaPostViewProducer;
 import faang.school.postservice.publisher.kafka.KafkaPublishPostProducer;
 import faang.school.postservice.publisher.redis.impl.RedisMessagePublisher;
 import faang.school.postservice.repository.PostRepository;
-import faang.school.postservice.repository.cache.PostCacheRepository;
 import faang.school.postservice.service.hashtag.HashtagService;
 import faang.school.postservice.validator.post.PostValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.cache.RedisCacheManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,10 +34,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -56,13 +52,12 @@ public class PostService {
     private final ObjectMapper objectMapper;
     private final ThreadPoolConfig poolConfig;
     private final HashtagService hashtagService;
-    private final RedisCacheProperties cacheProp;
     private final UserServiceClient userServiceClient;
-    private final RedisCacheManager cacheManager;
     private final KafkaPostViewProducer kafkaPostViewProducer;
     private final KafkaCacheUserProducer kafkaCacheUserProducer;
     private final KafkaPublishPostProducer kafkaPublishPostProducer;
-    private final PostCacheRepository postCacheRepository;
+    private final UserContext userContext;
+    private final PostCacheService postCacheService;
 
     @Value("${post.unverified-posts-ban-count}")
     private Integer unverifiedPostsBanCount;
@@ -198,43 +193,10 @@ public class PostService {
         return isPostBelong;
     }
 
-    public void saveBatchPostsToCache(Set<PostCacheDto> posts) {
-        postCacheRepository.saveBatchPostsToCache(posts);
-        log.info("Save posts {} to cache", posts.size());
-    }
-
-    public void savePostToCache(PostCacheDto postCacheDto) {
-        postCacheRepository.savePostCache(postCacheDto);
-        log.info("Saving post with id: {} to post cache", postCacheDto.getPostId());
-    }
-
-    public void addPostViewToPostCache(long postId) {
-        updatePostCache(postId, PostCacheDto::incrementPostViewsCount);
-        log.info("Added postView to postCache, for post with id: {}", postId);
-    }
-
-    public void addLikeToCachePost(long postId) {
-        updatePostCache(postId, PostCacheDto::incrementLikesCount);
-        log.info("Added like to postCache, for post with id: {}", postId);
-    }
-
-    public void addCommentToPostCache(CacheCommentDto commentDto) {
-        PostCacheDto postCacheDto = postCacheRepository.getPostCache(commentDto.getPostId());
-        postCacheDto.incrementCommentsCount();
-        Set<CacheCommentDto> comments = postCacheDto.getComments();
-        if (comments.size() >= commentQuantityInPost) {
-            comments.stream().limit(1).forEach(comments::remove);
-        }
-        comments.add(commentDto);
-        postCacheRepository.savePostCache(postCacheDto);
-        log.info("Added comment with id: {} to postCache, for post with id: {}",
-                commentDto.getCommentId(), commentDto.getPostId());
-    }
-
     @Transactional
     public PostDto getPostById(Long postId) {
         Post post = getPost(postId);
-        kafkaPostViewProducer.send(post);
+        kafkaPostViewProducer.send(post.getId());
         log.info("Post with id {} - got", postId);
         return postMapper.toDto(post);
     }
@@ -244,7 +206,8 @@ public class PostService {
         Post post = getPost(postId);
         postValidator.isPostPublished(post);
         Post updatedPost = postRepository.save(setPublished(post));
-        savePostToCache(updatedPost);
+        postCacheService.savePostToCache(updatedPost);
+
         sendPostPublishedEvent(updatedPost);
         kafkaCacheUserProducer.send(new ArrayList<>(List.of(post.getAuthorId())));
         return postMapper.toDto(updatedPost);
@@ -260,10 +223,9 @@ public class PostService {
         List<CompletableFuture<Void>> futures = subLists.stream()
                 .map(sublistOfPosts -> CompletableFuture.runAsync(() -> {
                     sublistOfPosts.forEach(this::setPublished);
-
                     List<Post> savedPosts = postRepository.saveAll(sublistOfPosts);
                     savedPosts.forEach(post -> {
-                        savePostToCache(post);
+                        postCacheService.savePostToCache(post);
                         sendPostPublishedEvent(post);
                         kafkaCacheUserProducer.send(new ArrayList<>(List.of(post.getAuthorId())));
                     });
@@ -296,11 +258,17 @@ public class PostService {
     }
 
     @Transactional
-    public List<Long> getAllPostsIdsPublishedNotLaterDaysAgo(long publishedDaysAgo, int limit, int offset) {
-        List<Long> postIds = postRepository.findAllPublishedNotDeletedPostsIdsPublishedNotLaterDaysAgo(
-                publishedDaysAgo, limit, offset);
+    public PostCacheDto getPostCacheDto(Long postId) {
+        Post post = getPost(postId);
+        return postMapper.toPostCacheDto(post);
+    }
+
+    @Transactional
+    public Page<Long> getAllPostsIdsPublishedNotLaterDaysAgo(long publishedDaysAgo, Pageable pageable) {
+        Page<Long> postIds = postRepository.findAllPublishedNotDeletedPostsIdsPublishedNotLaterDaysAgo(
+                publishedDaysAgo, pageable);
         log.info("Getting published not deleted posts ids: {}, published not later {} days ago",
-                postIds.size(), publishedDaysAgo);
+                postIds.getContent().size(), publishedDaysAgo);
         return postIds;
     }
 
@@ -317,34 +285,29 @@ public class PostService {
     @Transactional
     public LinkedHashSet<PostCacheDto> getBatchPostsFromCache(List<Long> postsIds) {
         List<Long> missedPostsIdsInCache = new ArrayList<>();
-        Set<PostCacheDto> postsCaches = postCacheRepository.getBatchPostsCaches(postsIds, missedPostsIdsInCache);
+        Set<PostCacheDto> postsCaches = postCacheService.getBatchPostsCaches(postsIds, missedPostsIdsInCache);
         if (!missedPostsIdsInCache.isEmpty()) {
             List<Post> posts = postRepository.findAllById(missedPostsIdsInCache);
             List<PostCacheDto> postCachesFromRepository = postMapper.toPostCacheDtoList(posts);
             postsCaches.addAll(postCachesFromRepository);
             return postsCaches.stream()
-                    .sorted(Comparator.comparing(PostCacheDto::getPublishedAt).reversed())
+                    .sorted(Comparator.comparing(PostCacheDto::getPublishedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                            .reversed())
                     .collect(Collectors.toCollection(LinkedHashSet::new));
         }
         log.info("Got batch postsCachesDtos : {}", postsCaches.size());
         return new LinkedHashSet<>(postsCaches);
     }
 
-    private void savePostToCache(Post post) {
-        PostCacheDto postCacheDto = postMapper.toPostCacheDto(post);
-        Objects.requireNonNull(cacheManager.getCache(cacheProp.getPostsCacheName())).put(post.getId(), postCacheDto);
-        log.info("Saving post with id {} to cache", post.getId());
-    }
-
     private void sendPostPublishedEvent(Post post) {
-        Long userId = UserContext.getUserId();
+        Long userId = userContext.getUserId();
         poolConfig.postTaskExecutor().execute(() -> {
-            UserContext.setUserId(userId);
+            userContext.setUserId(userId);
             List<Long> followersIds = userServiceClient.getFollowersIds(post.getAuthorId());
             List<List<Long>> subLists = divideListToSubLists(followersIds, postEventBatchSize);
-            subLists.forEach(ids -> kafkaPublishPostProducer.send(createPostEvent(post, followersIds)));
+            subLists.forEach(ids -> kafkaPublishPostProducer.send(createPostEvent(post, ids)));
+            log.info("Post with id {} - published", post.getId());
         });
-        log.info("Post with id {} - published", post.getId());
     }
 
     private Post setPublished(Post post) {
@@ -358,15 +321,6 @@ public class PostService {
                 .postDto(postMapper.toPostCacheDto(post))
                 .followersIds(followersIds)
                 .build();
-    }
-
-    private void updatePostCache(Long postId, Consumer<PostCacheDto> updater) {
-        PostCacheDto postCache = postCacheRepository.getPostCache(postId);
-        if (postCache == null) {
-            return;
-        }
-        updater.accept(postCache);
-        postCacheRepository.savePostCache(postCache);
     }
 
     private <T> List<List<T>> divideListToSubLists(List<T> list, int batchSize) {

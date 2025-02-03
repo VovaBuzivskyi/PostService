@@ -1,6 +1,8 @@
 package faang.school.postservice.repository;
 
 import faang.school.postservice.model.Post;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -60,15 +62,12 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query(nativeQuery = true, value = """
             SELECT id FROM post
             WHERE published = true
-              AND deleted = false
-              AND published_at >= NOW() - INTERVAL :publishedDaysAgo DAY
+                AND deleted = false
+                AND published_at >= NOW() - INTERVAL :publishedDaysAgo DAY
             ORDER BY published_at DESC
-            LIMIT :limit OFFSET :offset
             """)
-    List<Long> findAllPublishedNotDeletedPostsIdsPublishedNotLaterDaysAgo(
-            @Param("publishedDaysAgo") long publishedDaysAgo,
-            @Param("limit") int limit,
-            @Param("offset") int offset);
+    Page<Long> findAllPublishedNotDeletedPostsIdsPublishedNotLaterDaysAgo(
+            @Param("publishedDaysAgo") long publishedDaysAgo, Pageable pageable);
 
     @Query(nativeQuery = true, value = """
             SELECT EXISTS(

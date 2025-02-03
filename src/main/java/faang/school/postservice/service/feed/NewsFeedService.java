@@ -11,6 +11,7 @@ import faang.school.postservice.model.cache.UserCacheDto;
 import faang.school.postservice.repository.cache.FeedCacheRepository;
 import faang.school.postservice.repository.cache.UserCacheRepository;
 import faang.school.postservice.service.comment.CommentService;
+import faang.school.postservice.service.post.PostCacheService;
 import faang.school.postservice.service.post.PostService;
 import faang.school.postservice.validator.news_feed.NewsFeedValidator;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class NewsFeedService {
     private int pageSize;
 
     private final PostService postService;
+    private final PostCacheService postCacheService;
     private final UserServiceClient userServiceClient;
     private final FeedCacheRepository feedCacheRepository;
     private final ThreadPoolConfig poolConfig;
@@ -56,7 +58,7 @@ public class NewsFeedService {
         Set<PostCacheDto> postsSaveToCache = new LinkedHashSet<>();
         FeedCacheDto feedCacheDto = getFeed(userId, batchSize, postsSaveToCache);
 
-        postService.saveBatchPostsToCache(postsSaveToCache);
+        postCacheService.saveBatchPostsToCache(postsSaveToCache);
         feedCacheRepository.saveFeedCache(feedCacheDto);
         log.info("Feed cache for user with id: filled{}", userId);
         return feedCacheDto;
@@ -104,7 +106,7 @@ public class NewsFeedService {
                     }
                     postsIds.add(postToCache.getPostId());
                     feedCacheRepository.saveFeedCache(feedCacheDto);
-                    postService.savePostToCache(postToCache);
+                    postCacheService.savePostToCache(postToCache);
                     log.info("Added post with Id: {} to feed cache with key: {}",
                             postToCache.getPostId(), followerId);
                 }, poolConfig.newsFeedTaskExecutor()))
@@ -157,6 +159,19 @@ public class NewsFeedService {
                             getBatchNewestComments(postCacheDto.getPostId(), quantityCommentsInPost);
                     postCacheDto.setComments(comments);
                 }).collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    public PostCacheDto getPostCacheDtoWithComments(Long postId) {
+        PostCacheDto post;
+        post = postCacheService.getPostCache(postId);
+        if (post == null) {
+            post = postService.getPostCacheDto(postId);
+        }
+        Set<PostCacheDto> postsWithComments =
+                addLatestCommentsToPosts(new LinkedHashSet<>(Set.of(post)));
+        PostCacheDto postWithComments = postsWithComments.stream().findFirst().orElseThrow(
+                () -> new IllegalStateException("Error adding commentsDtos to postCacheDto with id: " + postId));
+        return postWithComments;
     }
 
     private NewsFeedResponseDto getFeedFromRepositoryReturnFirstPage(long userId) {

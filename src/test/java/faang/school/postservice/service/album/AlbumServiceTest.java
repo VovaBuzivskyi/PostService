@@ -18,7 +18,7 @@ import faang.school.postservice.filter.album.AlbumTitleFilter;
 import faang.school.postservice.mapper.AlbumMapperImpl;
 import faang.school.postservice.model.Album;
 import faang.school.postservice.model.Post;
-import faang.school.postservice.publisher.redis.MessagePublisher;
+import faang.school.postservice.publisher.redis.impl.AlbumCreatedPublisher;
 import faang.school.postservice.repository.AlbumRepository;
 import faang.school.postservice.service.post.PostService;
 import feign.FeignException;
@@ -60,7 +60,7 @@ class AlbumServiceTest {
     private AlbumRepository albumRepository;
 
     @Mock
-    private MessagePublisher.AlbumCreatedPublisher albumCreatedPublisher;
+    private AlbumCreatedPublisher albumCreatedPublisher;
 
     @Spy
     private AlbumMapperImpl albumMapper;
@@ -188,7 +188,7 @@ class AlbumServiceTest {
         assertThrows(ForbiddenException.class, () -> albumService.addPostToAlbum(albumId, postId));
 
         verify(albumRepository, times(1)).findById(albumId);
-        verify(userContext, times(1 )).getUserId();
+        verify(userContext, times(1)).getUserId();
     }
 
     @Test
@@ -212,7 +212,7 @@ class AlbumServiceTest {
         AlbumDto responseDto = assertDoesNotThrow(() -> albumService.addPostToAlbum(albumId, postId));
 
         verify(albumRepository, times(1)).findById(albumId);
-        verify(userContext, times(1 )).getUserId();
+        verify(userContext, times(1)).getUserId();
         verify(postService, times(1)).getPost(postId);
         verify(albumRepository, times(1)).save(album);
 

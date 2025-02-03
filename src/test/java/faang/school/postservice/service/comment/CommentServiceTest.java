@@ -1,5 +1,6 @@
 package faang.school.postservice.service.comment;
 
+import faang.school.postservice.dto.comment.CacheCommentDto;
 import faang.school.postservice.dto.comment.CommentDto;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.event.comment.CommentEventDto;
@@ -8,6 +9,8 @@ import faang.school.postservice.mapper.CommentMapper;
 import faang.school.postservice.model.Comment;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
+import faang.school.postservice.publisher.kafka.KafkaCacheUserProducer;
+import faang.school.postservice.publisher.kafka.KafkaCreateCommentProducer;
 import faang.school.postservice.publisher.redis.impl.CommentMessagePublisher;
 import faang.school.postservice.repository.CommentRepository;
 import faang.school.postservice.service.post.PostService;
@@ -22,8 +25,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -53,6 +58,12 @@ public class CommentServiceTest {
 
     @Mock
     private CommentMessagePublisher commentMessagePublisher;
+
+    @Mock
+    private KafkaCreateCommentProducer createCommentProducer;
+
+    @Mock
+    private KafkaCacheUserProducer kafkaCacheUserProducer;
 
     @InjectMocks
     private CommentService commentService;
@@ -90,6 +101,8 @@ public class CommentServiceTest {
         doNothing().when(commentValidator).isAuthorExist(commentDto.getAuthorId());
         when(commentRepository.save(savedComment)).thenReturn(savedComment);
         doNothing().when(commentMessagePublisher).publish(resultCommentEventDto);
+        doNothing().when(createCommentProducer).send(any());
+        doNothing().when(kafkaCacheUserProducer).send(new ArrayList<>(List.of(commentDto.getAuthorId())));
 
         CommentDto result = commentService.createComment(commentDto);
 
@@ -98,6 +111,7 @@ public class CommentServiceTest {
 
         verify(commentValidator, times(1)).isAuthorExist(commentDto.getAuthorId());
         verify(commentMapper, times(1)).toEntity(commentDto);
+        verify(commentMapper, times(1)).toCacheCommentDto(any());
         verify(commentRepository, times(1)).save(any(Comment.class));
         verify(commentMapper, times(1)).toDto(savedComment);
         verify(commentMessagePublisher, times(1)).publish(resultCommentEventDto);
@@ -248,5 +262,28 @@ public class CommentServiceTest {
         List<CommentDto> commentDtos = commentService.getAllCommentsNoVerified();
 
         assertEquals(2, commentDtos.size());
+    }
+
+    @Test
+    public void getBatchNewestCommentsTest() {
+        long postId = 1L;
+        int batchSize = 10;
+        long firstCommentId = 5L;
+        long secondCommentId = 6L;
+
+        Comment firstComment = Comment.builder().id(firstCommentId).build();
+        Comment secondComment = Comment.builder().id(secondCommentId).build();
+
+        List<Comment> comments = new ArrayList<>(Set.of(firstComment, secondComment));
+
+        when(commentRepository.findBatchNewestCommentsByPostId(postId, batchSize)).thenReturn(comments);
+
+        LinkedHashSet<CacheCommentDto> result = commentService.getBatchNewestComments(postId, batchSize);
+
+        verify(commentMapper, times(1)).toCacheCommentDto(firstComment);
+        verify(commentMapper, times(1)).toCacheCommentDto(secondComment);
+
+        assertFalse(result.isEmpty());
+        assertEquals(2,result.size());
     }
 }

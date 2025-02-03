@@ -2,11 +2,13 @@ package faang.school.postservice.service.like;
 
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.dto.like.LikeDto;
+import faang.school.postservice.dto.user.UserDto;
 import faang.school.postservice.mapper.like.LikeMapper;
 import faang.school.postservice.mapper.like.LikeMapperImpl;
 import faang.school.postservice.model.Comment;
 import faang.school.postservice.model.Like;
 import faang.school.postservice.model.Post;
+import faang.school.postservice.publisher.kafka.KafkaAddLikeProducer;
 import faang.school.postservice.repository.LikeRepository;
 import faang.school.postservice.service.comment.CommentService;
 import faang.school.postservice.service.post.PostService;
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,6 +49,9 @@ class LikeServiceTest {
     @Mock
     private LikeValidator likeValidator;
 
+    @Mock
+    private KafkaAddLikeProducer kafkaAddLikeProducer;
+
     @Spy
     private LikeMapper likeMapper = new LikeMapperImpl();
 
@@ -64,16 +70,32 @@ class LikeServiceTest {
                 .postId(postId)
                 .userId(userId)
                 .build();
+
         List<Like> likesOfPost = new ArrayList<>();
+
         Post postOfLike = Post.builder()
                 .id(postId)
                 .likes(likesOfPost)
                 .build();
 
-        when(likeRepository.findByPostId(postId)).thenReturn(new ArrayList<>());
+        Like like = Like.builder()
+                .id(likeId)
+                .userId(10L)
+                .post(Post.builder().id(postId).build())
+                .userId(userId)
+                .post(postOfLike)
+                .build();
+
         Like likeToCheckComment = new Like();
+
+        when(userServiceClient.getUser(likeDto.getUserId())).thenReturn(new UserDto());
+        doNothing().when(likeValidator).validateLikeHasTarget(postId, null);
+        when(likeRepository.findByPostId(postId)).thenReturn(new ArrayList<>());
+        doNothing().when(likeValidator).validateUserAddOnlyOneLikeToPost(new ArrayList<>(), likeDto.getUserId());
         when(likeRepository.findById(likeId)).thenReturn(Optional.of(likeToCheckComment));
+        doNothing().when(likeValidator).validateLikeWasNotPutToComment(any(), any());
         when(postService.getPost(postId)).thenReturn(postOfLike);
+        when(likeRepository.save(any())).thenReturn(like);
 
         likeService.addLikeToPost(likeDto);
 
@@ -88,6 +110,7 @@ class LikeServiceTest {
         verify(likeRepository).save(captor.capture());
         Like likeToSave = captor.getValue();
         verify(postService).addLikeToPost(postId, likeToSave);
+        verify(kafkaAddLikeProducer).send(String.valueOf(postId));
 
         assertEquals(postOfLike, likeToSave.getPost());
         assertEquals(userId, likeToSave.getUserId());
@@ -105,16 +128,40 @@ class LikeServiceTest {
                 .commentId(commentId)
                 .userId(userId)
                 .build();
+
         List<Like> likesOfComment = new ArrayList<>();
+
         Comment commentOfLike = Comment.builder()
                 .id(commentId)
                 .likes(likesOfComment)
                 .build();
 
-        when(likeRepository.findByCommentId(commentId)).thenReturn(new ArrayList<>());
+        Like likeBeforeSave = Like.builder()
+                .id(likeId)
+                .userId(10L)
+                .userId(userId)
+                .comment(commentOfLike)
+                .build();
+
+        Like like = Like.builder()
+                .id(likeId)
+                .userId(10L)
+                .userId(userId)
+                .comment(commentOfLike)
+                .build();
+
         Like likeToCheckPost = new Like();
+
+        when(userServiceClient.getUser(likeDto.getUserId())).thenReturn(new UserDto());
+        doNothing().when(likeValidator).validateLikeHasTarget(commentId, null);
+        doNothing().when(likeValidator).validateLikeWasNotPutToPost(any(), any());
+
+        when(likeRepository.findByCommentId(commentId)).thenReturn(new ArrayList<>());
         when(likeRepository.findById(likeId)).thenReturn(Optional.of(likeToCheckPost));
         when(commentService.getComment(commentId)).thenReturn(commentOfLike);
+
+        when(likeRepository.save(any())).thenReturn(like);
+        doNothing().when(commentService).addLikeToComment(likeDto.getCommentId(), likeBeforeSave);
 
         likeService.addLikeToComment(likeDto);
 

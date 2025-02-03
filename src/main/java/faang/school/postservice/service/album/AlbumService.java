@@ -6,6 +6,7 @@ import faang.school.postservice.dto.album.AlbumCreateUpdateDto;
 import faang.school.postservice.dto.album.AlbumDto;
 import faang.school.postservice.dto.album.AlbumFilterDto;
 import faang.school.postservice.enums.VisibilityAlbums;
+import faang.school.postservice.event.AlbumCreatedEvent;
 import faang.school.postservice.exception.DataValidationException;
 import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.exception.FeignClientException;
@@ -15,9 +16,8 @@ import faang.school.postservice.exception.UnauthorizedException;
 import faang.school.postservice.filter.album.AlbumFilter;
 import faang.school.postservice.mapper.AlbumMapper;
 import faang.school.postservice.model.Album;
-import faang.school.postservice.event.AlbumCreatedEvent;
 import faang.school.postservice.model.Post;
-import faang.school.postservice.publisher.redis.MessagePublisher;
+import faang.school.postservice.publisher.redis.impl.AlbumCreatedPublisher;
 import faang.school.postservice.repository.AlbumRepository;
 import faang.school.postservice.service.post.PostService;
 import feign.FeignException;
@@ -45,7 +45,7 @@ public class AlbumService {
     private final AlbumMapper albumMapper;
     private final PostService postService;
     private final List<AlbumFilter> filters;
-    private final MessagePublisher.AlbumCreatedPublisher albumCreatedPublisher;
+    private final AlbumCreatedPublisher albumCreatedPublisher;
 
     @Transactional
     public AlbumDto createAlbum(AlbumCreateUpdateDto createDto) {
@@ -62,7 +62,7 @@ public class AlbumService {
         Album savedAlbum = albumRepository.save(albumToSave);
 
         AlbumCreatedEvent albumCreatedEvent = new AlbumCreatedEvent(requesterUserId, savedAlbum.getId(),
-                                                                    savedAlbum.getTitle());
+                savedAlbum.getTitle());
         albumCreatedPublisher.publish(albumCreatedEvent);
 
         log.info("User with ID {} successfully created album with ID {} titled '{}'", requesterUserId, savedAlbum.getId(), createDto.getTitle());
@@ -253,7 +253,7 @@ public class AlbumService {
             case ALL_USERS -> true;
             case SUBSCRIBERS -> checkUserFollower(userId, album.getAuthorId());
             case SELECTED_USERS -> checkUserBeholder(userId, album.getAuthorId(), album.getBeholdersIds());
-            case ONLY_AUTHOR ->  checkUserToAuthor(userId, album.getAuthorId());
+            case ONLY_AUTHOR -> checkUserToAuthor(userId, album.getAuthorId());
         };
     }
 

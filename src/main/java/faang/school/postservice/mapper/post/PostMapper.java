@@ -28,6 +28,7 @@ public interface PostMapper {
 
     void updatePostFromDto(PostDto postDto, @MappingTarget Post post);
 
+    @Mapping(source = "id", target = "postId")
     @Mapping(source = "comments", target = "comments", ignore = true)
     @Mapping(source = "comments", target = "commentsCount", qualifiedByName = "mapCommentsCount")
     @Mapping(source = "likes", target = "likesCount", qualifiedByName = "mapLikesCount")

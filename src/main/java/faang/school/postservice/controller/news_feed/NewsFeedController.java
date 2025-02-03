@@ -21,12 +21,13 @@ public class NewsFeedController {
 
     private final NewsFeedService newsFeedService;
     private final FeedHeater feedHeater;
+    private final UserContext userContext;
 
     @GetMapping
     public NewsFeedResponseDto getNewsFeedBatch(@RequestParam(value = "lastViewedPostId", required = false)
                                                 @Min(value = 0, message = "Value should be positive")
                                                 Long lastViewedPostId) {
-        return newsFeedService.getNewsFeedBatch(lastViewedPostId, UserContext.getUserId());
+        return newsFeedService.getNewsFeedBatch(lastViewedPostId, userContext.getUserId());
     }
 
     @PostMapping("/cache/heat")

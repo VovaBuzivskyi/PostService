@@ -125,4 +125,20 @@ public class PostValidatorTest {
 
         assertDoesNotThrow(() -> postValidator.checkUpdatePost(post, postDto));
     }
+
+    @Test
+    void isPostPublished_WhenPostIsNotPublishedTest() {
+        Post post = new Post();
+        post.setPublished(false);
+
+        assertDoesNotThrow(() -> postValidator.isPostPublished(post));
+    }
+
+    @Test
+    void isPostPublishedWhenPostIsPublishedTest() {
+        Post post = new Post();
+        post.setPublished(true);
+
+        assertThrows(PostException.class, () -> postValidator.isPostPublished(post));
+    }
 }

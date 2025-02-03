@@ -2,7 +2,6 @@ package faang.school.postservice.service.like;
 
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.dto.like.LikeDto;
-import faang.school.postservice.event.like.CacheLikeEvent;
 import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.mapper.like.LikeMapper;
 import faang.school.postservice.model.Comment;
@@ -16,6 +15,7 @@ import faang.school.postservice.validator.like.LikeValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -34,6 +34,7 @@ public class LikeService {
     private final LikeMapper likeMapper;
     private final KafkaAddLikeProducer kafkaAddLikeProducer;
 
+    @Transactional
     public void addLikeToPost(LikeDto likeDto) {
         validateUserExistence(likeDto.getUserId());
         likeValidator.validateLikeHasTarget(likeDto.getPostId(), likeDto.getCommentId());
@@ -51,10 +52,11 @@ public class LikeService {
         Like savedLike = likeRepository.save(likeToSave);
         postService.addLikeToPost(likeDto.getPostId(), savedLike);
 
-        sendCacheLikeEvent(savedLike);
+        kafkaAddLikeProducer.send(String.valueOf(savedLike.getPost().getId()));
         log.info("Save new Like for Post with ID: {}", likeDto.getPostId());
     }
 
+    @Transactional
     public void addLikeToComment(LikeDto likeDto) {
         validateUserExistence(likeDto.getUserId());
         likeValidator.validateLikeHasTarget(likeDto.getCommentId(), likeDto.getPostId());
@@ -70,9 +72,7 @@ public class LikeService {
         likeToSave.setComment(commentOfLike);
 
         Like saveLike = likeRepository.save(likeToSave);
-        commentService.addLikeToComment(likeDto.getCommentId(), likeToSave);
-
-        sendCacheLikeEvent(saveLike);
+        commentService.addLikeToComment(likeDto.getCommentId(), saveLike);
         log.info("Save new Like for Comment with ID: {}", likeDto.getCommentId());
     }
 
@@ -93,15 +93,6 @@ public class LikeService {
         likeRepository.delete(likeToRemove);
         log.info("Remove like with ID: {}", likeId);
         return likeToRemove;
-    }
-
-    private void sendCacheLikeEvent(Like like) {
-        CacheLikeEvent cacheLikeEvent = CacheLikeEvent.builder()
-                .likeAuthorId(like.getUserId())
-                .likeId(like.getId())
-                .postId(like.getPost().getId())
-                .build();
-        kafkaAddLikeProducer.send(cacheLikeEvent);
     }
 
     private void validateUserExistence(long id) {
