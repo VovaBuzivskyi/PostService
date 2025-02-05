@@ -16,6 +16,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -119,7 +120,8 @@ class PostCacheServiceTest {
 
         when(postCacheRepository.getBatchPostsCaches(postIds, postsMissedInCache)).thenReturn(postCacheDtos);
 
-        Set<PostCacheDto> result = postCacheService.getBatchPostsCaches(postIds, postsMissedInCache);
+        Set<PostCacheDto> result =
+                postCacheService.getBatchPostsCaches(new ArrayList<>(postIds), postsMissedInCache);
 
         assertEquals(postCacheDtos, result);
     }

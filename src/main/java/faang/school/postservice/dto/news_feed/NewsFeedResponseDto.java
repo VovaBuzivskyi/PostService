@@ -10,7 +10,6 @@ import lombok.Setter;
 
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 @Setter
 @Getter
@@ -20,5 +19,5 @@ import java.util.Set;
 public class NewsFeedResponseDto {
 
     private List<UserCacheDto> postsAuthors;
-    private Set<PostCacheDto> posts = new LinkedHashSet<>();
+    private LinkedHashSet<PostCacheDto> posts;
 }

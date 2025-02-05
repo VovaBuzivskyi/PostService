@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/feed")
+@RequestMapping("/feeds")
 @RequiredArgsConstructor
 public class NewsFeedController {
 

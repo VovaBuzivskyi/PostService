@@ -680,7 +680,7 @@ public class PostServiceTest {
     @Test
     public void getBatchPostsFromCacheMissedPostsIsEmptyTest() {
         List<Long> missedPostsIdsInCache = new ArrayList<>();
-        List<Long> postIds = List.of(1L, 2L);
+        List<Long> postIds = new ArrayList<>(Set.of(1L, 2L));
 
         PostCacheDto firstPost = PostCacheDto.builder().postId(1L).build();
         PostCacheDto secondPost = PostCacheDto.builder().postId(2L).build();
