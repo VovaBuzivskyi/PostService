@@ -12,6 +12,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -34,6 +35,7 @@ public class FeedHeater {
     private final NewsFeedService newsFeedService;
     private final UserServiceClient userServiceClient;
 
+    @Transactional
     public void startHeatFeedCache() {
         userServiceClient.heatCache();
         Pageable pageable = PageRequest.of(0, eventBatchSize);
@@ -47,6 +49,7 @@ public class FeedHeater {
         } while (!page.isLast());
     }
 
+    @Transactional
     public void heatPostsCache(List<Long> postsIds) {
         List<PostCacheDto> posts = postService.getPostCacheDtoList(postsIds);
         Set<PostCacheDto> postsWithComments = newsFeedService.addLatestCommentsToPosts(new LinkedHashSet<>(posts));
