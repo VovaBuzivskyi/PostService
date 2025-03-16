@@ -4,6 +4,7 @@ import faang.school.postservice.client.ProjectServiceClient;
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.dto.post.PostDto;
 import faang.school.postservice.dto.post.PostRequestDto;
+import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.exception.PostException;
 import faang.school.postservice.model.Post;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,12 @@ public class PostValidator {
     public void isPostPublished(Post post) {
         if (post.isPublished()) {
             throw new PostException("Forbidden republish post");
+        }
+    }
+
+    public void validatePostExistence(Boolean isExists,long postId) {
+        if(!isExists){
+            throw new IllegalArgumentException("Post with id: %d not exists".formatted(postId));
         }
     }
 }

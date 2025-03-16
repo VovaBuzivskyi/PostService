@@ -12,7 +12,9 @@ import faang.school.postservice.publisher.kafka.KafkaAddLikeProducer;
 import faang.school.postservice.repository.LikeRepository;
 import faang.school.postservice.service.comment.CommentService;
 import faang.school.postservice.service.post.PostService;
+import faang.school.postservice.validator.comment.CommentValidator;
 import faang.school.postservice.validator.like.LikeValidator;
+import faang.school.postservice.validator.post.PostValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,6 +36,8 @@ public class LikeService {
     private final LikeValidator likeValidator;
     private final LikeMapper likeMapper;
     private final KafkaAddLikeProducer kafkaAddLikeProducer;
+    private final PostValidator postValidator;
+    private final CommentValidator commentValidator;
 
     @Transactional
     public void addLikeToPost(LikeDto likeDto) {
@@ -88,16 +92,17 @@ public class LikeService {
     }
 
     public List<UserDto> getLikedPostUsers(Long postId) {
-        Post post = postService.getPost(postId);
-        List<Like> likes = post.getLikes();
+        Boolean isPostExists = postService.isPostExists(postId);
+        postValidator.validatePostExistence(isPostExists, postId);
+        List<Like> likes = likeRepository.findByPostId(postId);
         List<UserDto> users = getUsersByIds(likes);
         log.info("Got {} users, who put like under post with id: {}", users.size(), postId);
         return users;
     }
 
     public List<UserDto> getLikedCommentUsers(long commentId) {
-        Comment comment = commentService.getComment(commentId);
-        List<Like> likes = comment.getLikes();
+        commentValidator.isCommentExists(commentId);
+        List<Like> likes = likeRepository.findByCommentId(commentId);
         List<UserDto> users = getUsersByIds(likes);
         log.info("Got {} users, who put like under comment: {}", users.size(), commentId);
         return users;
