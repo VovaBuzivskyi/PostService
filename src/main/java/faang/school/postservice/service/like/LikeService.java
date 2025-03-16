@@ -2,6 +2,7 @@ package faang.school.postservice.service.like;
 
 import faang.school.postservice.client.UserServiceClient;
 import faang.school.postservice.dto.like.LikeDto;
+import faang.school.postservice.dto.user.UserDto;
 import faang.school.postservice.exception.EntityNotFoundException;
 import faang.school.postservice.mapper.like.LikeMapper;
 import faang.school.postservice.model.Comment;
@@ -84,6 +85,29 @@ public class LikeService {
     public void removeLikeFromComment(Long likeId, LikeDto likeDto) {
         Like likeToRemove = removeLike(likeId, likeDto);
         commentService.removeLikeFromComment(likeDto.getCommentId(), likeToRemove);
+    }
+
+    public List<UserDto> getLikedPostUsers(Long postId) {
+        Post post = postService.getPost(postId);
+        List<Like> likes = post.getLikes();
+        List<UserDto> users = getUsersByIds(likes);
+        log.info("Got {} users, who put like under post with id: {}", users.size(), postId);
+        return users;
+    }
+
+    public List<UserDto> getLikedCommentUsers(long commentId) {
+        Comment comment = commentService.getComment(commentId);
+        List<Like> likes = comment.getLikes();
+        List<UserDto> users = getUsersByIds(likes);
+        log.info("Got {} users, who put like under comment: {}", users.size(), commentId);
+        return users;
+    }
+
+    private List<UserDto> getUsersByIds(List<Like> likes) {
+        List<Long> usersIds = likes.stream()
+                .map(Like::getUserId)
+                .toList();
+        return userServiceClient.getUsersByIds(usersIds);
     }
 
     private Like removeLike(Long likeId, LikeDto likeDto) {

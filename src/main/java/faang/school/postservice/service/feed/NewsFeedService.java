@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -53,6 +54,7 @@ public class NewsFeedService {
     private final CommentService commentService;
     private final NewsFeedValidator newsFeedValidator;
 
+    @Transactional
     public FeedCacheDto fillFeed(Long userId, int batchSize) {
         log.info("Start filling cache for user with id: {}", userId);
         Set<PostCacheDto> postsSaveToCache = new LinkedHashSet<>();
@@ -77,6 +79,7 @@ public class NewsFeedService {
         return feedCacheDto;
     }
 
+    @Transactional
     public CompletableFuture<Void> addPostToFeeds(PublishPostEvent event) {
         PostCacheDto postToCache = event.getPostDto();
 
@@ -115,6 +118,7 @@ public class NewsFeedService {
         return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
     }
 
+    @Transactional
     public NewsFeedResponseDto getNewsFeedBatch(Long lastViewedPostId, long userId) {
         newsFeedValidator.isUserExists(userId);
         newsFeedValidator.isLastViewedPostExists(lastViewedPostId);
@@ -152,6 +156,7 @@ public class NewsFeedService {
                 postsIds, numberToSkipAndRemaining.getKey(), userId, lastViewedPostId);
     }
 
+    @Transactional
     public Set<PostCacheDto> addLatestCommentsToPosts(Set<PostCacheDto> posts) {
         return posts.stream()
                 .peek(this::addLatestCommentsToPost)
@@ -165,6 +170,7 @@ public class NewsFeedService {
         return post;
     }
 
+    @Transactional
     public PostCacheDto getPostCacheDtoWithComments(Long postId) {
         PostCacheDto post;
         post = postCacheService.getPostCache(postId);
