@@ -12,7 +12,9 @@ import faang.school.postservice.publisher.kafka.KafkaAddLikeProducer;
 import faang.school.postservice.repository.LikeRepository;
 import faang.school.postservice.service.comment.CommentService;
 import faang.school.postservice.service.post.PostService;
+import faang.school.postservice.validator.comment.CommentValidator;
 import faang.school.postservice.validator.like.LikeValidator;
+import faang.school.postservice.validator.post.PostValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -44,10 +46,16 @@ class LikeServiceTest {
     private PostService postService;
 
     @Mock
+    private PostValidator postValidator;
+
+    @Mock
     private CommentService commentService;
 
     @Mock
     private LikeValidator likeValidator;
+
+    @Mock
+    private CommentValidator commentValidator;
 
     @Mock
     private KafkaAddLikeProducer kafkaAddLikeProducer;
@@ -231,5 +239,72 @@ class LikeServiceTest {
         verify(likeValidator).validateThisUserAddThisLike(userId, likeToRemove);
         verify(likeRepository).delete(likeToRemove);
         verify(commentService).removeLikeFromComment(commentId, likeToRemove);
+    }
+
+    @Test
+    public void getLikedPostUsersTest() {
+        long postId = 1L;
+        boolean isExists = true;
+        long userId = 10L;
+        long userId2 = 20L;
+
+        Like like = Like.builder()
+                .userId(userId)
+                .build();
+        Like like2 = Like.builder()
+                .userId(userId2)
+                .build();
+
+        UserDto userDto = UserDto.builder().id(userId).build();
+        UserDto userDto2 = UserDto.builder().id(userId2).build();
+
+        List<Like> likes = new ArrayList<>(List.of(like,like2));
+        List<Long> usersIds = new ArrayList<>(List.of(userId,userId2));
+        List<UserDto> users = new ArrayList<>(List.of(userDto,userDto2));
+
+        when(postService.isPostExists(postId)).thenReturn(isExists);
+        doNothing().when(postValidator).validatePostExistence(isExists,postId);
+        when(likeRepository.findByPostId(postId)).thenReturn(likes);
+        when(userServiceClient.getUsersByIds(usersIds)).thenReturn(users);
+
+        List<UserDto> result = likeService.getLikedPostUsers(postId);
+
+        assertEquals(users, result);
+        verify(postService).isPostExists(postId);
+        verify(postValidator).validatePostExistence(isExists,postId);
+        verify(likeRepository).findByPostId(postId);
+        verify(userServiceClient).getUsersByIds(usersIds);
+    }
+
+    @Test
+    public void getLikedCommentUsersTest() {
+        long commentId = 1L;
+        long userId = 10L;
+        long userId2 = 20L;
+
+        Like like = Like.builder()
+                .userId(userId)
+                .build();
+        Like like2 = Like.builder()
+                .userId(userId2)
+                .build();
+
+        UserDto userDto = UserDto.builder().id(userId).build();
+        UserDto userDto2 = UserDto.builder().id(userId2).build();
+
+        List<Like> likes = new ArrayList<>(List.of(like,like2));
+        List<Long> usersIds = new ArrayList<>(List.of(userId,userId2));
+        List<UserDto> users = new ArrayList<>(List.of(userDto,userDto2));
+
+        doNothing().when(commentValidator).validateCommentExists(commentId);
+        when(likeRepository.findByCommentId(commentId)).thenReturn(likes);
+        when(userServiceClient.getUsersByIds(usersIds)).thenReturn(users);
+
+        List<UserDto> result = likeService.getLikedCommentUsers(commentId);
+
+        assertEquals(users, result);
+        verify(commentValidator).validateCommentExists(commentId);
+        verify(likeRepository).findByCommentId(commentId);
+        verify(userServiceClient).getUsersByIds(usersIds);
     }
 }

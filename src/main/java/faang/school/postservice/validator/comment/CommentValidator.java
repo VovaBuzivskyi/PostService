@@ -1,6 +1,7 @@
 package faang.school.postservice.validator.comment;
 
 import faang.school.postservice.client.UserServiceClient;
+import faang.school.postservice.repository.CommentRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class CommentValidator {
     private final UserServiceClient userServiceClient;
+    private final CommentRepository commentRepository;
 
     public void isAuthorExist(Long authorId) {
         log.info("Checking if author exists with ID: {}", authorId);
@@ -20,4 +22,9 @@ public class CommentValidator {
         }
     }
 
+    public void validateCommentExists(Long commentId) {
+        if (!commentRepository.existsById(commentId)) {
+            throw new EntityNotFoundException("Comment with ID " + commentId + " does not exist");
+        }
+    }
 }

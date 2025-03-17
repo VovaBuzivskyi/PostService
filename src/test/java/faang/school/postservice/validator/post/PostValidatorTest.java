@@ -141,4 +141,21 @@ public class PostValidatorTest {
 
         assertThrows(PostException.class, () -> postValidator.isPostPublished(post));
     }
+
+    @Test
+    void validatePostExistenceTest() {
+        boolean isExists = true;
+        long postId = 1L;
+
+        assertDoesNotThrow(() -> postValidator.validatePostExistence(isExists, postId));
+    }
+
+    @Test
+    void validatePostExistenceThrowExceptionTest() {
+        boolean isExists = false;
+        long postId = 1L;
+
+        assertThrows(IllegalArgumentException.class,
+                () -> postValidator.validatePostExistence(isExists, postId));
+    }
 }

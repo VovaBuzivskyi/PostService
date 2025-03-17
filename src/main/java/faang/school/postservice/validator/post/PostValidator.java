@@ -43,4 +43,10 @@ public class PostValidator {
             throw new PostException("Forbidden republish post");
         }
     }
+
+    public void validatePostExistence(Boolean isExists, long postId) {
+        if (!isExists) {
+            throw new IllegalArgumentException("Post with id: %d not exists".formatted(postId));
+        }
+    }
 }
