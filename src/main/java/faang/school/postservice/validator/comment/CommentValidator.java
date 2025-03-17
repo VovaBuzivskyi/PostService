@@ -22,7 +22,7 @@ public class CommentValidator {
         }
     }
 
-    public void isCommentExists(Long commentId) {
+    public void validateCommentExists(Long commentId) {
         if (!commentRepository.existsById(commentId)) {
             throw new EntityNotFoundException("Comment with ID " + commentId + " does not exist");
         }

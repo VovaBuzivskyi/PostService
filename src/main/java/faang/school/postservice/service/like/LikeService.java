@@ -101,7 +101,7 @@ public class LikeService {
     }
 
     public List<UserDto> getLikedCommentUsers(long commentId) {
-        commentValidator.isCommentExists(commentId);
+        commentValidator.validateCommentExists(commentId);
         List<Like> likes = likeRepository.findByCommentId(commentId);
         List<UserDto> users = getUsersByIds(likes);
         log.info("Got {} users, who put like under comment: {}", users.size(), commentId);
